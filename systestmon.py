@@ -231,12 +231,9 @@ class SysTestMon():
                         #    print cbcollect_output[i]
                         if cbcollect_output[0] == "Status: completed":
                             cbcollect_upload_paths = []
-                            num_nodes = (len(cbcollect_output) - 2) / 4
-                            j = 0
-                            for i in range(1, num_nodes + 1):
-                                j = 1 + (i * 4)
-                                cbcollect_upload_paths.append(
-                                    cbcollect_output[j].replace("\turl : ", ""))
+                            for line in cbcollect_output:
+                                if "url :" in line:
+                                    cbcollect_upload_paths.append(line)
                             self.logger.info("cbcollect upload paths : \n")
                             self.logger.info('\n'.join(cbcollect_upload_paths))
                             # for i in range(len(cbcollect_upload_paths)):
