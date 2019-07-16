@@ -200,7 +200,9 @@ class SysTestMon():
             last_scan_timestamp = datetime.now() - timedelta(minutes=10.0)
             self.logger.info("Last scan timestamp :" + str(last_scan_timestamp))
 
-            if should_cbcollect:
+            collected = False
+
+            while should_cbcollect and not collected:
                 self.logger.info("====== RUNNING CBCOLLECT_INFO ======")
                 # command = "/opt/couchbase/bin/cbcollect_info outputfile.zip --multi-node-diag --upload-host=s3.amazonaws.com/bugdb/jira --customer=systestmon-{0}".format(
                 #    timestamp)
@@ -238,10 +240,13 @@ class SysTestMon():
                             self.logger.info('\n'.join(cbcollect_upload_paths))
                             # for i in range(len(cbcollect_upload_paths)):
                             #    print cbcollect_upload_paths[i]
-
+                            collected = True
                             break
                         elif cbcollect_output[0] == "Status: running":
                             time.sleep(60)
+                        elif cbcollect_output[0] == "Status: cancelled":
+                            collected = False
+                            break
                         else:
                             self.logger.error("Issue with cbcollect")
 
