@@ -117,6 +117,7 @@ class SysTestMon():
         ssh_password = sys.argv[5]
         cbcollect_on_high_mem_cpu_usage = sys.argv[6]
         print_all_logs = sys.argv[7]
+        paramiko.util.log_to_file('./paramiko.log')
 
         node_map = self.get_services_map(master_node, rest_username,
                                          rest_password)
@@ -126,7 +127,7 @@ class SysTestMon():
         keyword_counts = {}
         keyword_counts["timestamp"] = timestamp
         last_scan_timestamp = ""
-
+        iter_count = 1
         while True:
             should_cbcollect = False
 
@@ -156,7 +157,7 @@ class SysTestMon():
                                     keyword,
                                     node))
                             if print_all_logs.lower() == "true" or last_scan_timestamp == "":
-                                self.logger.info('\n'.join(output))
+                                self.logger.debug('\n'.join(output))
                             else:
                                 self.print_output(output, last_scan_timestamp)
                             # for i in range(len(output)):
@@ -254,8 +255,9 @@ class SysTestMon():
             # self.logger.info(prev_keyword_counts)
 
             self.logger.info(
-                "====== Log scan complete. Sleeping for {0} seconds ======".format(
-                    self.scan_interval))
+                "====== Log scan iteration number {1} complete. Sleeping for {0} seconds ======".format(
+                    self.scan_interval, iter_count))
+            iter_count = iter_count + 1
             time.sleep(self.scan_interval)
 
     def print_output(self, output, last_scan_timestamp):
@@ -264,9 +266,9 @@ class SysTestMon():
             if match:
                 timestamp_in_log = datetime.strptime(match.group(), '%Y-%m-%dT%H:%M:%S')
                 if timestamp_in_log >= last_scan_timestamp and self.check_op_in_ignorelist(line):
-                    self.logger.info(line)
+                    self.logger.debug(line)
             else:
-                self.logger.info(line)
+                self.logger.debug(line)
 
     def check_op_in_ignorelist(self, line):
         for ignore_text in self.ignore_list:
