@@ -208,7 +208,7 @@ class SysTestMon():
                 # command = "/opt/couchbase/bin/cbcollect_info outputfile.zip --multi-node-diag --upload-host=s3.amazonaws.com/bugdb/jira --customer=systestmon-{0}".format(
                 #    timestamp)
                 epoch_time = int(time.time())
-                command = "/opt/couchbase/bin/couchbase-cli collect-logs-start -c {0} -u {1} -p {2} --all-nodes --upload --upload-host s3.amazonaws.com/bugdb/jira --customer systestmon-{3}".format(
+                command = "/opt/couchbase/bin/couchbase-cli collect-logs-start -c {0} -u {1} -p {2} --all-nodes --upload --upload-host cb-jira.s3.us-east-2.amazonaws.com/logs --customer systestmon-{3}".format(
                     master_node, rest_username, rest_password, epoch_time)
                 _, cbcollect_output, std_err = self.execute_command(
                     command, master_node, ssh_username, ssh_password)
