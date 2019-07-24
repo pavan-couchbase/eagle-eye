@@ -269,6 +269,8 @@ class SysTestMon():
                     self.logger.debug(line)
             else:
                 self.logger.debug(line)
+                if line.strip() not in self.ignore_list:
+                    self.ignore_list.append(line.strip())
 
     def check_op_in_ignorelist(self, line):
         for ignore_text in self.ignore_list:
