@@ -340,7 +340,8 @@ class SysTestMon():
         output = []
         error = []
         for line in stdout.read().splitlines():
-            output.append(line)
+            if "No such file or directory" not in line:
+                output.append(line)
         for line in stderro.read().splitlines():
             error.append(line)
         if temp:
