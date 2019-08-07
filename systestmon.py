@@ -17,68 +17,79 @@ class SysTestMon():
             "component": "memcached",
             "logfiles": "babysitter.log*",
             "services": "all",
-            "keywords": ["exception occurred in runloop"]
+            "keywords": ["exception occurred in runloop"],
+            "ignore_keywords": None
         },
         {
             "component": "memcached",
             "logfiles": "memcached.log.*",
             "services": "all",
-            "keywords": ["CRITICAL"]
+            "keywords": ["CRITICAL"],
+            "ignore_keywords": None
         },
         {
             "component": "index",
             "logfiles": "indexer.log*",
             "services": "index",
-            "keywords": ["panic", "fatal", "Error parsing XATTR"]
+            "keywords": ["panic", "fatal", "Error parsing XATTR"],
+            "ignore_keywords": None
         },
         {
             "component": "analytics",
             "logfiles": "analytics_error*",
             "services": "cbas",
             "keywords": ["fata", "Analytics Service is temporarily unavailable", "Failed during startup task", "HYR0",
-                         "ASX", "IllegalStateException"]
+                         "ASX", "IllegalStateException"],
+            "ignore_keywords": None
         },
         {
             "component": "eventing",
             "logfiles": "eventing.log*",
             "services": "eventing",
-            "keywords": ["panic", "fatal"]
+            "keywords": ["panic", "fatal"],
+            "ignore_keywords": None
         },
         {
             "component": "fts",
             "logfiles": "fts.log*",
             "services": "fts",
-            "keywords": ["panic", "fatal"]
+            "keywords": ["panic", "fatal"],
+            "ignore_keywords": None
         },
         {
             "component": "xdcr",
             "logfiles": "*xdcr*.log*",
             "services": "kv",
-            "keywords": ["panic", "fatal"]
+            "keywords": ["panic", "fatal"],
+            "ignore_keywords": None
         },
         {
             "component": "projector",
             "logfiles": "projector.log*",
             "services": "kv",
-            "keywords": ["panic", "Error parsing XATTR", "fata"]
+            "keywords": ["panic", "Error parsing XATTR", "fata"],
+            "ignore_keywords": None
         },
         {
             "component": "rebalance",
             "logfiles": "error.log*",
             "services": "all",
-            "keywords": ["rebalance exited"]
+            "keywords": ["rebalance exited"],
+            "ignore_keywords": None
         },
         {
             "component": "crash",
             "logfiles": "info.log*",
             "services": "all",
-            "keywords": ["exited with status"]
+            "keywords": ["exited with status"],
+            "ignore_keywords": "exited with status 0"
         },
         {
             "component": "query",
             "logfiles": "query.log*",
             "services": "n1ql",
-            "keywords": ["panic", "fatal"]
+            "keywords": ["panic", "fatal"],
+            "ignore_keywords": None
         }
     ]
     # Frequency of scanning the logs in seconds
@@ -119,8 +130,6 @@ class SysTestMon():
         print_all_logs = sys.argv[7]
         paramiko.util.log_to_file('./paramiko.log')
 
-        node_map = self.get_services_map(master_node, rest_username,
-                                         rest_password)
         timestamp = str(datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))
 
         prev_keyword_counts = None
@@ -130,7 +139,7 @@ class SysTestMon():
         iter_count = 1
         while True:
             should_cbcollect = False
-
+            node_map = self.get_services_map(master_node, rest_username, rest_password)
             for component in self.configuration:
                 nodes = self.find_nodes_with_service(node_map,
                                                      component["services"])
@@ -146,8 +155,12 @@ class SysTestMon():
                     total_occurences = 0
 
                     for node in nodes:
-                        command = "zgrep -i \"{0}\" /opt/couchbase/var/lib/couchbase/logs/{1}".format(
-                            keyword, component["logfiles"])
+                        if component["ignore_keywords"]:
+                            command = "zgrep -i \"{0}\" /opt/couchbase/var/lib/couchbase/logs/{1} | grep -vE \"{2}\"".format(
+                                keyword, component["logfiles"], component["ignore_keywords"])
+                        else:
+                            command = "zgrep -i \"{0}\" /opt/couchbase/var/lib/couchbase/logs/{1}".format(
+                                keyword, component["logfiles"])
                         occurences, output, std_err = self.execute_command(
                             command, node, ssh_username, ssh_password)
                         if occurences > 0:
