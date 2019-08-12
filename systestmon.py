@@ -54,7 +54,7 @@ class SysTestMon():
             "logfiles": "fts.log*",
             "services": "fts",
             "keywords": ["panic", "fatal"],
-            "ignore_keywords": None
+            "ignore_keywords": "Fatal:false"
         },
         {
             "component": "xdcr",
