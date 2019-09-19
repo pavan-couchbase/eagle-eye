@@ -31,7 +31,7 @@ class SysTestMon():
             "component": "index",
             "logfiles": "indexer.log*",
             "services": "index",
-            "keywords": ["panic", "fatal", "Error parsing XATTR"],
+            "keywords": ["panic", "fatal", "Error parsing XATTR", "zero"],
             "ignore_keywords": None
         },
         {
