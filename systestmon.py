@@ -308,7 +308,7 @@ class SysTestMon():
                 clusternode["services"] = node["services"]
                 mem_used = int(node["memoryTotal"]) - int(node["memoryFree"])
                 clusternode["memUsage"] = round(
-                    float(mem_used / float(node["memoryTotal"]) * 100), 2)
+                    float(float(mem_used) / float(node["memoryTotal"]) * 100), 2)
                 clusternode["cpuUsage"] = round(
                     node["systemStats"]["cpu_utilization_rate"], 2)
                 clusternode["status"] = node["status"]
