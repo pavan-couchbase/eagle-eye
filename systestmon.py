@@ -9,7 +9,6 @@ from datetime import datetime, timedelta
 import paramiko
 import requests
 
-
 class SysTestMon():
     # Input map of keywords to be mined for in the logs
     configuration = [
@@ -104,7 +103,8 @@ class SysTestMon():
     # 3. SSH to those nodes, grep for specified keywords in specified files
     # 4. Reporting
 
-    ignore_list = ["Port exited with status 0", "Fatal:false", "HyracksDataException: HYR0115: Local network error"]
+    ignore_list = ["Port exited with status 0", "Fatal:false", "HyracksDataException: HYR0115: Local network error",
+                   "No such file or directory"]
 
     def run(self):
         # Logging configuration
@@ -128,6 +128,7 @@ class SysTestMon():
         ssh_password = sys.argv[5]
         cbcollect_on_high_mem_cpu_usage = sys.argv[6]
         print_all_logs = sys.argv[7]
+        email_recipients = sys.argv[8]
         paramiko.util.log_to_file('./paramiko.log')
 
         timestamp = str(datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))
@@ -139,6 +140,8 @@ class SysTestMon():
         iter_count = 1
         while True:
             should_cbcollect = False
+            message_content = ""
+            message_sub = ""
             node_map = self.get_services_map(master_node, rest_username, rest_password)
             for component in self.configuration:
                 nodes = self.find_nodes_with_service(node_map,
@@ -146,7 +149,6 @@ class SysTestMon():
                 self.logger.info(
                     "Nodes with {0} service : {1}".format(component["services"],
                                                           str(nodes)))
-
                 for keyword in component["keywords"]:
                     key = component["component"] + "_" + keyword
                     self.logger.info(
@@ -169,10 +171,14 @@ class SysTestMon():
                                     occurences,
                                     keyword,
                                     node))
+                            message_content = message_content + '\n\n' + node
                             if print_all_logs.lower() == "true" or last_scan_timestamp == "":
                                 self.logger.debug('\n'.join(output))
+                                message_content = message_content + '\n' + '\n'.join(output)
                             else:
-                                self.print_output(output, last_scan_timestamp)
+                                message_content = message_content + '\n' + self.print_output(output,
+                                                                                             last_scan_timestamp,
+                                                                                             message_content)
                             # for i in range(len(output)):
                             #    self.logger.info(output[i])
                         total_occurences += occurences
@@ -252,6 +258,8 @@ class SysTestMon():
                                     cbcollect_upload_paths.append(line)
                             self.logger.info("cbcollect upload paths : \n")
                             self.logger.info('\n'.join(cbcollect_upload_paths))
+                            message_content = message_content + '\n\ncbcollect logs: \n\n' + '\n'.join(
+                                cbcollect_upload_paths)
                             # for i in range(len(cbcollect_upload_paths)):
                             #    print cbcollect_upload_paths[i]
                             collected = True
@@ -270,20 +278,54 @@ class SysTestMon():
             self.logger.info(
                 "====== Log scan iteration number {1} complete. Sleeping for {0} seconds ======".format(
                     self.scan_interval, iter_count))
+            message_sub = message_sub.join(
+                "Node: {0} : Log scan iteration number {1} complete".format(master_node, iter_count))
+            self.send_email(message_sub, message_content, email_recipients)
             iter_count = iter_count + 1
             time.sleep(self.scan_interval)
 
-    def print_output(self, output, last_scan_timestamp):
+    def send_email(self, message_sub, message_content, email_recipients):
+        SENDMAIL = "/usr/sbin/sendmail"  # sendmail location
+
+        FROM = "eagle-eye@couchbase.com"
+        TO = email_recipients
+
+        SUBJECT = message_sub
+
+        TEXT = message_content
+
+        # Prepare actual message
+
+        message = ('From: %s\n'
+                   'To: %s\n'
+                   'Subject: %s\n'
+                   '\n'
+                   '%s\n') % (FROM, TO, SUBJECT, TEXT)
+
+        # Send the mail
+        import os
+
+        p = os.popen("%s -t -i" % SENDMAIL, "w")
+        p.write(message)
+        status = p.close()
+        if status:
+            print "Sendmail exit status", status
+
+    def print_output(self, output, last_scan_timestamp, message_content):
         for line in output:
             match = re.search(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}', line)
             if match:
                 timestamp_in_log = datetime.strptime(match.group(), '%Y-%m-%dT%H:%M:%S')
                 if timestamp_in_log >= last_scan_timestamp and self.check_op_in_ignorelist(line):
                     self.logger.debug(line)
+                    message_content = message_content + '\n' + output
             else:
                 self.logger.debug(line)
+                message_content = message_content + '\n' + output
                 if line.strip() not in self.ignore_list:
                     self.ignore_list.append(line.strip())
+
+        return message_content
 
     def check_op_in_ignorelist(self, line):
         for ignore_text in self.ignore_list:
