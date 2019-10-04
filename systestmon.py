@@ -318,10 +318,10 @@ class SysTestMon():
                 timestamp_in_log = datetime.strptime(match.group(), '%Y-%m-%dT%H:%M:%S')
                 if timestamp_in_log >= last_scan_timestamp and self.check_op_in_ignorelist(line):
                     self.logger.debug(line)
-                    message_content = message_content + '\n' + output
+                    message_content = message_content + '\n' + line
             else:
                 self.logger.debug(line)
-                message_content = message_content + '\n' + output
+                message_content = message_content + '\n' + line
                 if line.strip() not in self.ignore_list:
                     self.ignore_list.append(line.strip())
 
