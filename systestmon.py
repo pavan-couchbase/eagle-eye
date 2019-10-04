@@ -176,9 +176,7 @@ class SysTestMon():
                                 self.logger.debug('\n'.join(output))
                                 message_content = message_content + '\n' + '\n'.join(output)
                             else:
-                                message_content = message_content + '\n' + self.print_output(output,
-                                                                                             last_scan_timestamp,
-                                                                                             message_content)
+                                message_content = self.print_output(output, last_scan_timestamp, message_content)
                             # for i in range(len(output)):
                             #    self.logger.info(output[i])
                         total_occurences += occurences
