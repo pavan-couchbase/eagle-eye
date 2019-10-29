@@ -66,7 +66,9 @@ class SysTestMon():
             "services": "fts",
             "keywords": ["panic", "fatal"],
             "ignore_keywords": "Fatal:false",
-            "check_stats_api": False
+            "check_stats_api": True,
+            "stats_api_list": ["api/stats"],
+            "port": "8094"
         },
         {
             "component": "xdcr",
@@ -389,8 +391,7 @@ class SysTestMon():
         if not headers:
             headers = self._create_headers()
         end_time = time.time() + timeout
-        self.logger.info("Executing {0} request for following api {1} with Params: {2}  and Headers: {3}" \
-                         .format(method, api, params, headers))
+        self.logger.info("Executing {0} request for following api {1}".format(method, api))
         count = 1
         while True:
             try:
