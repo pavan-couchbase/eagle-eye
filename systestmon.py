@@ -3,11 +3,16 @@ import json
 import logging
 import re
 import sys
-import time
 from datetime import datetime, timedelta
+import httplib2
+import traceback
+import socket
+import time
+import base64
 
 import paramiko
 import requests
+from collections import Mapping, Sequence, Set, deque
 
 class SysTestMon():
     # Input map of keywords to be mined for in the logs
@@ -17,21 +22,26 @@ class SysTestMon():
             "logfiles": "babysitter.log*",
             "services": "all",
             "keywords": ["exception occurred in runloop"],
-            "ignore_keywords": None
+            "ignore_keywords": None,
+            "check_stats_api": False
         },
         {
             "component": "memcached",
             "logfiles": "memcached.log.*",
             "services": "all",
             "keywords": ["CRITICAL"],
-            "ignore_keywords": None
+            "ignore_keywords": None,
+            "check_stats_api": False
         },
         {
             "component": "index",
             "logfiles": "indexer.log*",
             "services": "index",
             "keywords": ["panic", "fatal", "Error parsing XATTR", "zero"],
-            "ignore_keywords": None
+            "ignore_keywords": None,
+            "check_stats_api": True,
+            "stats_api_list": ["stats/storage", "stats"],
+            "port": "9102"
         },
         {
             "component": "analytics",
@@ -39,56 +49,64 @@ class SysTestMon():
             "services": "cbas",
             "keywords": ["fata", "Analytics Service is temporarily unavailable", "Failed during startup task", "HYR0",
                          "ASX", "IllegalStateException"],
-            "ignore_keywords": None
+            "ignore_keywords": None,
+            "check_stats_api": False
         },
         {
             "component": "eventing",
             "logfiles": "eventing.log*",
             "services": "eventing",
             "keywords": ["panic", "fatal"],
-            "ignore_keywords": None
+            "ignore_keywords": None,
+            "check_stats_api": False
         },
         {
             "component": "fts",
             "logfiles": "fts.log*",
             "services": "fts",
             "keywords": ["panic", "fatal"],
-            "ignore_keywords": "Fatal:false"
+            "ignore_keywords": "Fatal:false",
+            "check_stats_api": False
         },
         {
             "component": "xdcr",
             "logfiles": "*xdcr*.log*",
             "services": "kv",
             "keywords": ["panic", "fatal"],
-            "ignore_keywords": None
+            "ignore_keywords": None,
+            "check_stats_api": False
         },
         {
             "component": "projector",
             "logfiles": "projector.log*",
             "services": "kv",
             "keywords": ["panic", "Error parsing XATTR", "fata"],
-            "ignore_keywords": None
+            "ignore_keywords": None,
+            "check_stats_api": False
         },
         {
             "component": "rebalance",
             "logfiles": "error.log*",
             "services": "all",
             "keywords": ["rebalance exited"],
-            "ignore_keywords": None
+            "ignore_keywords": None,
+            "check_stats_api": False
         },
         {
             "component": "crash",
             "logfiles": "info.log*",
             "services": "all",
             "keywords": ["exited with status"],
-            "ignore_keywords": "exited with status 0"
+            "ignore_keywords": "exited with status 0",
+            "check_stats_api": False
         },
         {
             "component": "query",
             "logfiles": "query.log*",
             "services": "n1ql",
             "keywords": ["panic", "fatal"],
-            "ignore_keywords": None
+            "ignore_keywords": None,
+            "check_stats_api": False
         }
     ]
     # Frequency of scanning the logs in seconds
@@ -157,6 +175,13 @@ class SysTestMon():
                     total_occurences = 0
 
                     for node in nodes:
+                        if component["check_stats_api"]:
+                            stat_status = self.check_stats_api(node, component)
+                            if not stat_status:
+                                self.logger.debug("Found stats with negative value")
+                                message_content = message_content + '\n\n' + "Found stats with negative value"
+                                should_cbcollect = True
+
                         if component["ignore_keywords"]:
                             command = "zgrep -i \"{0}\" /opt/couchbase/var/lib/couchbase/logs/{1} | grep -vE \"{2}\"".format(
                                 keyword, component["logfiles"], component["ignore_keywords"])
@@ -309,6 +334,101 @@ class SysTestMon():
         status = p.close()
         if status:
             print "Sendmail exit status", status
+
+    def check_stats_api(self, node, component):
+        stat_status = True
+        for stat in component["stats_api_list"]:
+            stat_json = self.get_stats(stat, node, component["port"])
+            neg_stat = self.check_for_negative_stat(stat_json)
+            if not neg_stat:
+                self.logger.debug(stat_json)
+            stat_status = stat_status & neg_stat
+
+        return stat_status
+
+    def check_for_negative_stat(self, stat_json):
+        queue = deque([stat_json])
+        while queue:
+            node = queue.popleft()
+            if isinstance(node, Mapping):
+                queue.extend(node.values())
+            elif isinstance(node, (Sequence, Set)) and not isinstance(node, basestring):
+                queue.extend(node)
+            else:
+                if isinstance(node, (int, long)) and node < 0:
+                    self.logger.info(node)
+                    return False
+
+        return True
+
+    def get_stats(self, stat, node, port):
+        api = "http://{0}:{1}/{2}".format(node, port, stat)
+        json_parsed = {}
+
+        status, content, header = self._http_request(api)
+        if status:
+            json_parsed = json.loads(content)
+            # self.logger.info(json_parsed)
+        return json_parsed
+
+    def _create_headers(self):
+        authorization = base64.encodestring('%s:%s' % ("Administrator", "password"))
+        return {'Content-Type': 'application/x-www-form-urlencoded',
+                'Authorization': 'Basic %s' % authorization,
+                'Accept': '*/*'}
+
+    def _get_auth(self, headers):
+        key = 'Authorization'
+        if key in headers:
+            val = headers[key]
+            if val.startswith("Basic "):
+                return "auth: " + base64.decodestring(val[6:])
+        return ""
+
+    def _http_request(self, api, method='GET', params='', headers=None, timeout=120):
+        if not headers:
+            headers = self._create_headers()
+        end_time = time.time() + timeout
+        self.logger.info("Executing {0} request for following api {1} with Params: {2}  and Headers: {3}" \
+                         .format(method, api, params, headers))
+        count = 1
+        while True:
+            try:
+                response, content = httplib2.Http(timeout=timeout).request(api, method,
+                                                                           params, headers)
+                if response['status'] in ['200', '201', '202']:
+                    return True, content, response
+                else:
+                    try:
+                        json_parsed = json.loads(content)
+                    except ValueError as e:
+                        json_parsed = {}
+                        json_parsed["error"] = "status: {0}, content: {1}" \
+                            .format(response['status'], content)
+                    reason = "unknown"
+                    if "error" in json_parsed:
+                        reason = json_parsed["error"]
+                    message = '{0} {1} body: {2} headers: {3} error: {4} reason: {5} {6} {7}'. \
+                        format(method, api, params, headers, response['status'], reason,
+                               content.rstrip('\n'), self._get_auth(headers))
+                    self.logger.error(message)
+                    self.logger.debug(''.join(traceback.format_stack()))
+                    return False, content, response
+            except socket.error as e:
+                if count < 4:
+                    self.logger.error("socket error while connecting to {0} error {1} ".format(api, e))
+                if time.time() > end_time:
+                    self.logger.error("Tried ta connect {0} times".format(count))
+                    raise Exception()
+            except httplib2.ServerNotFoundError as e:
+                if count < 4:
+                    self.logger.error("ServerNotFoundError error while connecting to {0} error {1} " \
+                                      .format(api, e))
+                if time.time() > end_time:
+                    self.logger.error("Tried ta connect {0} times".format(count))
+                    raise Exception()
+            time.sleep(3)
+            count += 1
 
     def print_output(self, output, last_scan_timestamp, message_content):
         for line in output:
