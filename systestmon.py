@@ -177,13 +177,6 @@ class SysTestMon():
                     total_occurences = 0
 
                     for node in nodes:
-                        if component["check_stats_api"]:
-                            stat_status = self.check_stats_api(node, component)
-                            if not stat_status:
-                                self.logger.debug("Found stats with negative value")
-                                message_content = message_content + '\n\n' + "Found stats with negative value"
-                                should_cbcollect = True
-
                         if component["ignore_keywords"]:
                             command = "zgrep -i \"{0}\" /opt/couchbase/var/lib/couchbase/logs/{1} | grep -vE \"{2}\"".format(
                                 keyword, component["logfiles"], component["ignore_keywords"])
@@ -217,6 +210,14 @@ class SysTestMon():
                             should_cbcollect = True
                     else:
                         if total_occurences > 0:
+                            should_cbcollect = True
+
+                for node in nodes:
+                    if component["check_stats_api"]:
+                        stat_status = self.check_stats_api(node, component)
+                        if not stat_status:
+                            self.logger.debug("Found stats with negative value")
+                            message_content = message_content + '\n\n' + "Found stats with negative value"
                             should_cbcollect = True
 
             # Check for health of all nodes
