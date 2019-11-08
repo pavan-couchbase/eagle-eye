@@ -9,6 +9,8 @@ import traceback
 import socket
 import time
 import base64
+import os
+import ast
 
 import paramiko
 import requests
@@ -37,7 +39,7 @@ class SysTestMon():
             "component": "index",
             "logfiles": "indexer.log*",
             "services": "index",
-            "keywords": ["panic", "fatal", "Error parsing XATTR", "zero"],
+            "keywords": ["panic", "fatal", "Error parsing XATTR", "zero", "protobuf.Error"],
             "ignore_keywords": None,
             "check_stats_api": True,
             "stats_api_list": ["stats/storage", "stats"],
@@ -126,39 +128,43 @@ class SysTestMon():
     ignore_list = ["Port exited with status 0", "Fatal:false", "HyracksDataException: HYR0115: Local network error",
                    "No such file or directory"]
 
-    def run(self):
+    def run(self, master_node, rest_username, rest_password, ssh_username, ssh_password,
+            cbcollect_on_high_mem_cpu_usage, print_all_logs, email_recipients, state_file_dir, run_infinite, logger):
         # Logging configuration
-        self.logger = logging.getLogger("systestmon")
-        self.logger.setLevel(logging.DEBUG)
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.DEBUG)
-        formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-        ch.setFormatter(formatter)
-        self.logger.addHandler(ch)
-        timestamp = str(datetime.now().strftime('%Y%m%dT_%H%M%S'))
-        fh = logging.FileHandler("./systestmon-{0}.log".format(timestamp))
-        fh.setFormatter(formatter)
-        self.logger.addHandler(fh)
+        if not logger:
+            self.logger = logging.getLogger("systestmon")
+            self.logger.setLevel(logging.DEBUG)
+            ch = logging.StreamHandler()
+            ch.setLevel(logging.DEBUG)
+            formatter = logging.Formatter(
+                "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+            ch.setFormatter(formatter)
+            self.logger.addHandler(ch)
+            timestamp = str(datetime.now().strftime('%Y%m%dT_%H%M%S'))
+            fh = logging.FileHandler("./systestmon-{0}.log".format(timestamp))
+            fh.setFormatter(formatter)
+            self.logger.addHandler(fh)
+        else:
+            self.logger = logger
 
-        master_node = sys.argv[1]
-        rest_username = sys.argv[2]
-        rest_password = sys.argv[3]
-        ssh_username = sys.argv[4]
-        ssh_password = sys.argv[5]
-        cbcollect_on_high_mem_cpu_usage = sys.argv[6]
-        print_all_logs = sys.argv[7]
-        email_recipients = sys.argv[8]
+        self.run_infinite = ast.literal_eval(run_infinite)
         paramiko.util.log_to_file('./paramiko.log')
 
         timestamp = str(datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))
 
-        prev_keyword_counts = None
-        keyword_counts = {}
-        keyword_counts["timestamp"] = timestamp
+        self.keyword_counts = {}
+        self.keyword_counts["timestamp"] = timestamp
+        self.state_file = state_file_dir + "/eagle-eye_" + master_node + ".state"
         last_scan_timestamp = ""
         iter_count = 1
         while True:
+            if os.path.exists(self.state_file):
+                s = open(self.state_file, 'r').read()
+                prev_keyword_counts = ast.literal_eval(s)
+                last_scan_timestamp = datetime.strptime(prev_keyword_counts["last_scan_timestamp"],
+                                                        "%Y-%m-%d %H:%M:%S.%f")
+            else:
+                prev_keyword_counts = None
             should_cbcollect = False
             message_content = ""
             message_sub = ""
@@ -201,7 +207,7 @@ class SysTestMon():
                             #    self.logger.info(output[i])
                         total_occurences += occurences
 
-                    keyword_counts[key] = total_occurences
+                    self.keyword_counts[key] = total_occurences
                     if prev_keyword_counts is not None and key in prev_keyword_counts.keys():
                         if total_occurences > int(prev_keyword_counts[key]):
                             self.logger.warn(
@@ -245,6 +251,7 @@ class SysTestMon():
 
             last_scan_timestamp = datetime.now() - timedelta(minutes=10.0)
             self.logger.info("Last scan timestamp :" + str(last_scan_timestamp))
+            self.keyword_counts["last_scan_timestamp"] = str(last_scan_timestamp)
 
             collected = False
 
@@ -298,8 +305,7 @@ class SysTestMon():
                         else:
                             self.logger.error("Issue with cbcollect")
 
-            prev_keyword_counts = copy.deepcopy(keyword_counts)
-            # self.logger.info(prev_keyword_counts)
+            self.update_state_file()
 
             self.logger.info(
                 "====== Log scan iteration number {1} complete. Sleeping for {0} seconds ======".format(
@@ -309,6 +315,9 @@ class SysTestMon():
             if message_content:
                 self.send_email(message_sub, message_content, email_recipients)
             iter_count = iter_count + 1
+
+            if not self.run_infinite:
+                break
             time.sleep(self.scan_interval)
 
     def send_email(self, message_sub, message_content, email_recipients):
@@ -337,6 +346,10 @@ class SysTestMon():
         status = p.close()
         if status:
             print "Sendmail exit status", status
+
+    def update_state_file(self):
+        target = open(self.state_file, 'w')
+        target.write(str(self.keyword_counts))
 
     def check_stats_api(self, node, component):
         stat_status = True
@@ -459,11 +472,10 @@ class SysTestMon():
         node_map = []
 
         # Get map of nodes in the cluster
-        response = requests.get(cluster_url, auth=(
-            rest_username, rest_password), verify=True)
+        status, content, header = self._http_request(cluster_url)
 
-        if (response.ok):
-            response = json.loads(str(response.content))
+        if status:
+            response = json.loads(str(content))
 
             for node in response["nodes"]:
                 clusternode = {}
@@ -476,8 +488,6 @@ class SysTestMon():
                     node["systemStats"]["cpu_utilization_rate"], 2)
                 clusternode["status"] = node["status"]
                 node_map.append(clusternode)
-        else:
-            response.raise_for_status()
 
         return node_map
 
@@ -547,4 +557,17 @@ class SysTestMon():
 
 
 if __name__ == '__main__':
-    SysTestMon().run()
+    master_node = sys.argv[1]
+    rest_username = sys.argv[2]
+    rest_password = sys.argv[3]
+    ssh_username = sys.argv[4]
+    ssh_password = sys.argv[5]
+    cbcollect_on_high_mem_cpu_usage = sys.argv[6]
+    print_all_logs = sys.argv[7]
+    email_recipients = sys.argv[8]
+    state_file_dir = sys.argv[9]
+    run_infinite = sys.argv[10]
+    logger = ast.literal_eval(sys.argv[11])
+    SysTestMon().run(master_node, rest_username, rest_password, ssh_username, ssh_password,
+                     cbcollect_on_high_mem_cpu_usage, print_all_logs, email_recipients, state_file_dir, run_infinite,
+                     logger)
