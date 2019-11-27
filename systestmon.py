@@ -220,11 +220,14 @@ class SysTestMon():
 
                 for node in nodes:
                     if component["check_stats_api"]:
-                        stat_status = self.check_stats_api(node, component)
-                        if not stat_status:
-                            self.logger.debug("Found stats with negative value")
-                            message_content = message_content + '\n\n' + "Found stats with negative value"
-                            should_cbcollect = True
+                        try:
+                            stat_status = self.check_stats_api(node, component)
+                            if not stat_status:
+                                self.logger.debug("Found stats with negative value")
+                                message_content = message_content + '\n\n' + "Found stats with negative value"
+                                should_cbcollect = True
+                        except Exception, e:
+                            self.logger.info("Found an exception {0}".format(e))
 
             # Check for health of all nodes
             for node in node_map:
