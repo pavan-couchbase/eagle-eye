@@ -108,7 +108,7 @@ class SysTestMon():
             "component": "query",
             "logfiles": "query.log*",
             "services": "n1ql",
-            "keywords": ["panic", "fatal"],
+            "keywords": ["panic", "fatal", "Encounter planner error"],
             "ignore_keywords": None,
             "check_stats_api": False
         }
