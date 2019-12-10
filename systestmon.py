@@ -197,7 +197,7 @@ class SysTestMon():
                                     occurences,
                                     keyword,
                                     node))
-                            message_content = message_content + '\n\n' + node
+                            message_content = message_content + '\n\n' + node + " : " + str(component["component"])
                             if print_all_logs.lower() == "true" or last_scan_timestamp == "":
                                 self.logger.debug('\n'.join(output))
                                 message_content = message_content + '\n' + '\n'.join(output)
@@ -220,11 +220,10 @@ class SysTestMon():
 
                 for node in nodes:
                     if component["check_stats_api"]:
+                        message_content = message_content + '\n\n' + node + " : " + str(component["component"])
                         try:
-                            stat_status = self.check_stats_api(node, component)
-                            if not stat_status:
-                                self.logger.debug("Found stats with negative value")
-                                message_content = message_content + '\n\n' + "Found stats with negative value"
+                            fin_neg_stat, message_content = self.check_stats_api(node, component, message_content)
+                            if fin_neg_stat.__len__() != 0:
                                 should_cbcollect = True
                         except Exception, e:
                             self.logger.info("Found an exception {0}".format(e))
@@ -354,31 +353,41 @@ class SysTestMon():
         target = open(self.state_file, 'w')
         target.write(str(self.keyword_counts))
 
-    def check_stats_api(self, node, component):
-        stat_status = True
+    def check_stats_api(self, node, component, message_content):
+
+        fin_neg_stat = []
         for stat in component["stats_api_list"]:
             stat_json = self.get_stats(stat, node, component["port"])
             neg_stat = self.check_for_negative_stat(stat_json)
-            if not neg_stat:
-                self.logger.debug(stat_json)
-            stat_status = stat_status & neg_stat
+            if neg_stat.__len__() != 0:
+                fin_neg_stat.append(neg_stat)
+            else:
+                neg_stat = None
+            self.logger.info(str(stat) + " : " + str(neg_stat))
+            message_content = message_content + '\n' + str(stat) + " : " + str(neg_stat)
 
-        return stat_status
+        return fin_neg_stat, message_content
 
     def check_for_negative_stat(self, stat_json):
         queue = deque([stat_json])
+        neg_stats = []
         while queue:
             node = queue.popleft()
-            if isinstance(node, Mapping):
-                queue.extend(node.values())
-            elif isinstance(node, (Sequence, Set)) and not isinstance(node, basestring):
-                queue.extend(node)
-            else:
-                if isinstance(node, (int, long)) and node < 0:
-                    self.logger.info(node)
-                    return False
+            nodevalue = node
+            if type(node) is tuple:
+                nodekey = node[0]
+                nodevalue = node[1]
 
-        return True
+            if isinstance(nodevalue, Mapping):
+                for k, v in nodevalue.items():
+                    queue.extend([(k, v)])
+            elif isinstance(nodevalue, (Sequence, Set)) and not isinstance(nodevalue, basestring):
+                queue.extend(nodevalue)
+            else:
+                if isinstance(nodevalue, (int, long)) and nodevalue < 0:
+                    neg_stats.append(node)
+
+        return neg_stats
 
     def get_stats(self, stat, node, port):
         api = "http://{0}:{1}/{2}".format(node, port, stat)
