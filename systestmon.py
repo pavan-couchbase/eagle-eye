@@ -314,7 +314,7 @@ class SysTestMon():
                     self.scan_interval, iter_count))
             message_sub = message_sub.join(
                 "Node: {0} : Log scan iteration number {1} complete".format(master_node, iter_count))
-            if message_content:
+            if should_cbcollect:
                 self.send_email(message_sub, message_content, email_recipients)
             iter_count = iter_count + 1
 
