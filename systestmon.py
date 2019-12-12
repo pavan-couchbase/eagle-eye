@@ -169,6 +169,8 @@ class SysTestMon():
             message_content = ""
             message_sub = ""
             node_map = self.get_services_map(master_node, rest_username, rest_password)
+            if not node_map:
+                continue
             for component in self.configuration:
                 nodes = self.find_nodes_with_service(node_map,
                                                      component["services"])
@@ -482,24 +484,29 @@ class SysTestMon():
     def get_services_map(self, master, rest_username, rest_password):
         cluster_url = "http://" + master + ":8091/pools/default"
         node_map = []
+        try:
+            # Get map of nodes in the cluster
+            status, content, header = self._http_request(cluster_url)
 
-        # Get map of nodes in the cluster
-        status, content, header = self._http_request(cluster_url)
+            if status:
+                response = json.loads(str(content))
 
-        if status:
-            response = json.loads(str(content))
-
-            for node in response["nodes"]:
-                clusternode = {}
-                clusternode["hostname"] = node["hostname"].replace(":8091", "")
-                clusternode["services"] = node["services"]
-                mem_used = int(node["memoryTotal"]) - int(node["memoryFree"])
-                clusternode["memUsage"] = round(
-                    float(float(mem_used) / float(node["memoryTotal"]) * 100), 2)
-                clusternode["cpuUsage"] = round(
-                    node["systemStats"]["cpu_utilization_rate"], 2)
-                clusternode["status"] = node["status"]
-                node_map.append(clusternode)
+                for node in response["nodes"]:
+                    clusternode = {}
+                    clusternode["hostname"] = node["hostname"].replace(":8091", "")
+                    clusternode["services"] = node["services"]
+                    mem_used = int(node["memoryTotal"]) - int(node["memoryFree"])
+                    clusternode["memUsage"] = round(
+                        float(float(mem_used) / float(node["memoryTotal"]) * 100), 2)
+                    clusternode["cpuUsage"] = round(
+                        node["systemStats"]["cpu_utilization_rate"], 2)
+                    clusternode["status"] = node["status"]
+                    node_map.append(clusternode)
+        except Exception, e:
+            self.logger.info("Found an exception {0}".format(e))
+            self.logger.info(status)
+            self.logger.info(content)
+            node_map = None
 
         return node_map
 
