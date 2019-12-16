@@ -386,7 +386,7 @@ class SysTestMon():
             elif isinstance(nodevalue, (Sequence, Set)) and not isinstance(nodevalue, basestring):
                 queue.extend(nodevalue)
             else:
-                if isinstance(nodevalue, (int, long)) and nodevalue < 0:
+                if isinstance(nodevalue, (int, long)) and nodevalue < 0 and "mutation_queue_size" not in nodekey:
                     neg_stats.append(node)
 
         return neg_stats
