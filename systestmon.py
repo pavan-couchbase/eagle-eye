@@ -23,7 +23,7 @@ class SysTestMon():
             "component": "memcached",
             "logfiles": "babysitter.log*",
             "services": "all",
-            "keywords": ["exception occurred in runloop"],
+            "keywords": ["exception occurred in runloop", "failover exited with reason"],
             "ignore_keywords": None,
             "check_stats_api": False
         },
@@ -92,7 +92,7 @@ class SysTestMon():
             "component": "rebalance",
             "logfiles": "error.log*",
             "services": "all",
-            "keywords": ["rebalance exited"],
+            "keywords": ["rebalance exited", "failover exited with reason"],
             "ignore_keywords": None,
             "check_stats_api": False
         },
@@ -100,7 +100,7 @@ class SysTestMon():
             "component": "crash",
             "logfiles": "info.log*",
             "services": "all",
-            "keywords": ["exited with status"],
+            "keywords": ["exited with status", "failover exited with reason"],
             "ignore_keywords": "exited with status 0",
             "check_stats_api": False
         },
