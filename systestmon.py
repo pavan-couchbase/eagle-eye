@@ -39,7 +39,7 @@ class SysTestMon():
             "component": "index",
             "logfiles": "indexer.log*",
             "services": "index",
-            "keywords": ["panic", "fatal", "Error parsing XATTR", "zero", "protobuf.Error", "Encounter planner error"],
+            "keywords": ["panic", "Error parsing XATTR", "zero", "protobuf.Error", "Encounter planner error"],
             "ignore_keywords": None,
             "check_stats_api": True,
             "stats_api_list": ["stats/storage", "stats"],
