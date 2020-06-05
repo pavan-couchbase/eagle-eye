@@ -284,7 +284,7 @@ class SysTestMon():
             self.keyword_counts["last_scan_timestamp"] = str(last_scan_timestamp)
 
             collected = False
-            should_cbcollect = False
+
             while should_cbcollect and not collected:
                 self.logger.info("====== RUNNING CBCOLLECT_INFO ======")
                 # command = "/opt/couchbase/bin/cbcollect_info outputfile.zip --multi-node-diag --upload-host=s3.amazonaws.com/bugdb/jira --customer=systestmon-{0}".format(
