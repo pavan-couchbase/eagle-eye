@@ -25,7 +25,8 @@ class SysTestMon():
             "services": "all",
             "keywords": ["exception occurred in runloop", "failover exited with reason"],
             "ignore_keywords": None,
-            "check_stats_api": False
+            "check_stats_api": False,
+            "collect_dumps": False
         },
         {
             "component": "memcached",
@@ -33,7 +34,8 @@ class SysTestMon():
             "services": "all",
             "keywords": ["CRITICAL"],
             "ignore_keywords": None,
-            "check_stats_api": False
+            "check_stats_api": False,
+            "collect_dumps": False
         },
         {
             "component": "index",
@@ -43,7 +45,8 @@ class SysTestMon():
             "ignore_keywords": None,
             "check_stats_api": True,
             "stats_api_list": ["stats/storage", "stats"],
-            "port": "9102"
+            "port": "9102",
+            "collect_dumps": True
         },
         {
             "component": "analytics",
@@ -52,7 +55,8 @@ class SysTestMon():
             "keywords": ["fata", "Analytics Service is temporarily unavailable", "Failed during startup task", "HYR0",
                          "ASX", "IllegalStateException"],
             "ignore_keywords": None,
-            "check_stats_api": False
+            "check_stats_api": False,
+            "collect_dumps": False
         },
         {
             "component": "eventing",
@@ -60,7 +64,8 @@ class SysTestMon():
             "services": "eventing",
             "keywords": ["panic", "fatal"],
             "ignore_keywords": None,
-            "check_stats_api": False
+            "check_stats_api": False,
+            "collect_dumps": False
         },
         {
             "component": "fts",
@@ -70,7 +75,8 @@ class SysTestMon():
             "ignore_keywords": "Fatal:false",
             "check_stats_api": True,
             "stats_api_list": ["api/stats"],
-            "port": "8094"
+            "port": "8094",
+            "collect_dumps": True
         },
         {
             "component": "xdcr",
@@ -78,7 +84,8 @@ class SysTestMon():
             "services": "kv",
             "keywords": ["panic", "fatal"],
             "ignore_keywords": None,
-            "check_stats_api": False
+            "check_stats_api": False,
+            "collect_dumps": False
         },
         {
             "component": "projector",
@@ -86,7 +93,9 @@ class SysTestMon():
             "services": "kv",
             "keywords": ["panic", "Error parsing XATTR", "fata"],
             "ignore_keywords": None,
-            "check_stats_api": False
+            "check_stats_api": False,
+            "port": "9999",
+            "collect_dumps": True
         },
         {
             "component": "rebalance",
@@ -94,7 +103,8 @@ class SysTestMon():
             "services": "all",
             "keywords": ["rebalance exited", "failover exited with reason"],
             "ignore_keywords": None,
-            "check_stats_api": False
+            "check_stats_api": False,
+            "collect_dumps": False
         },
         {
             "component": "crash",
@@ -102,7 +112,8 @@ class SysTestMon():
             "services": "all",
             "keywords": ["exited with status", "failover exited with reason"],
             "ignore_keywords": "exited with status 0",
-            "check_stats_api": False
+            "check_stats_api": False,
+            "collect_dumps": False
         },
         {
             "component": "query",
@@ -110,7 +121,10 @@ class SysTestMon():
             "services": "n1ql",
             "keywords": ["panic", "fatal", "Encounter planner error"],
             "ignore_keywords": None,
-            "check_stats_api": False
+            "check_stats_api": False,
+            "collect_dumps": True,
+            "port": "8093"
+
         }
     ]
     # Frequency of scanning the logs in seconds
@@ -157,6 +171,7 @@ class SysTestMon():
         self.state_file = state_file_dir + "/eagle-eye_" + master_node + ".state"
         last_scan_timestamp = ""
         iter_count = 1
+        os.system("rm -rf dump_collected_*")
         while True:
             if os.path.exists(self.state_file):
                 s = open(self.state_file, 'r').read()
@@ -165,6 +180,8 @@ class SysTestMon():
                                                         "%Y-%m-%d %H:%M:%S.%f")
             else:
                 prev_keyword_counts = None
+            self.dump_dir_name = "dump_collected_" + str(iter_count)
+            os.mkdir(self.dump_dir_name)
             should_cbcollect = False
             message_content = ""
             message_sub = ""
@@ -230,6 +247,15 @@ class SysTestMon():
                         except Exception, e:
                             self.logger.info("Found an exception {0}".format(e))
 
+                    if component["collect_dumps"]:
+                        message_content = message_content + '\n\n' + node + " : " + str(
+                            component["component"]) + " Collecting dumps"
+                        try:
+                            message_content = self.collect_dumps(node, component, message_content)
+                        except Exception, e:
+                            self.logger.info("Found an exception {0}".format(e))
+
+
             # Check for health of all nodes
             for node in node_map:
                 if node["memUsage"] > self.mem_threshold:
@@ -258,7 +284,7 @@ class SysTestMon():
             self.keyword_counts["last_scan_timestamp"] = str(last_scan_timestamp)
 
             collected = False
-
+            should_cbcollect = False
             while should_cbcollect and not collected:
                 self.logger.info("====== RUNNING CBCOLLECT_INFO ======")
                 # command = "/opt/couchbase/bin/cbcollect_info outputfile.zip --multi-node-diag --upload-host=s3.amazonaws.com/bugdb/jira --customer=systestmon-{0}".format(
@@ -355,6 +381,12 @@ class SysTestMon():
         target = open(self.state_file, 'w')
         target.write(str(self.keyword_counts))
 
+    def collect_dumps(self, node, component, message_content):
+        goroutine_dump_name, cpupprof_dump_name, heappprof_dump_name = self.get_dumps(node, component["port"])
+        message_content = message_content + '\n' + "Dump Location : " + '\n' + goroutine_dump_name + '\n' + cpupprof_dump_name + '\n' + heappprof_dump_name
+        return message_content
+
+
     def check_stats_api(self, node, component, message_content):
 
         fin_neg_stat = []
@@ -390,6 +422,31 @@ class SysTestMon():
                     neg_stats.append(node)
 
         return neg_stats
+
+    def get_dumps(self, node, port):
+        goroutine_dump_name = "{0}/{1}/goroutine_{2}".format(os.getcwd(), self.dump_dir_name, node)
+        cpupprof_dump_name = "{0}/{1}/cpupprof_{2}".format(os.getcwd(), self.dump_dir_name, node)
+        heappprof_dump_name = "{0}/{1}/heappprof_{2}".format(os.getcwd(), self.dump_dir_name, node)
+
+        heap_dump_cmd = "curl http://{0}:{1}/debug/pprof/heap?debug=1 -u Administrator:password > {2}".format(node,
+                                                                                                              port,
+                                                                                                              heappprof_dump_name)
+        cpu_dump_cmd = "curl http://{0}:{1}/debug/pprof/profile?debug=1 -u Administrator:password > {2}".format(node,
+                                                                                                                port,
+                                                                                                                cpupprof_dump_name)
+        goroutine_dump_cmd = "curl http://{0}:{1}/debug/pprof/goroutine?debug=1 -u Administrator:password > {2}".format(
+            node, port, goroutine_dump_name)
+
+        print(heap_dump_cmd)
+        os.system(heap_dump_cmd)
+
+        print(cpu_dump_cmd)
+        os.system(cpu_dump_cmd)
+
+        print(goroutine_dump_cmd)
+        os.system(goroutine_dump_cmd)
+
+        return goroutine_dump_name, cpupprof_dump_name, heappprof_dump_name
 
     def get_stats(self, stat, node, port):
         api = "http://{0}:{1}/{2}".format(node, port, stat)
