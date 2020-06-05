@@ -437,13 +437,13 @@ class SysTestMon():
         goroutine_dump_cmd = "curl http://{0}:{1}/debug/pprof/goroutine?debug=1 -u Administrator:password > {2}".format(
             node, port, goroutine_dump_name)
 
-        print(heap_dump_cmd)
+        self.logger.info(heap_dump_cmd)
         os.system(heap_dump_cmd)
 
-        print(cpu_dump_cmd)
+        self.logger.info(cpu_dump_cmd)
         os.system(cpu_dump_cmd)
 
-        print(goroutine_dump_cmd)
+        self.logger.info(goroutine_dump_cmd)
         os.system(goroutine_dump_cmd)
 
         return goroutine_dump_name, cpupprof_dump_name, heappprof_dump_name
