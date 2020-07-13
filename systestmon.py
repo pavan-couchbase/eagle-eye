@@ -143,7 +143,8 @@ class SysTestMon():
                    "No such file or directory"]
 
     def run(self, master_node, rest_username, rest_password, ssh_username, ssh_password,
-            cbcollect_on_high_mem_cpu_usage, print_all_logs, email_recipients, state_file_dir, run_infinite, logger):
+            cbcollect_on_high_mem_cpu_usage, print_all_logs, email_recipients, state_file_dir, run_infinite, logger,
+            collect_dumps):
         # Logging configuration
         if not logger:
             self.logger = logging.getLogger("systestmon")
@@ -162,6 +163,7 @@ class SysTestMon():
             self.logger = logger
 
         self.run_infinite = ast.literal_eval(run_infinite)
+        self.collect_dumps = ast.literal_eval(collect_dumps)
         paramiko.util.log_to_file('./paramiko.log')
 
         timestamp = str(datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))
@@ -247,7 +249,7 @@ class SysTestMon():
                         except Exception, e:
                             self.logger.info("Found an exception {0}".format(e))
 
-                    if component["collect_dumps"]:
+                    if component["collect_dumps"] and self.collect_dumps:
                         message_content = message_content + '\n\n' + node + " : " + str(
                             component["component"]) + " Collecting dumps"
                         try:
@@ -653,6 +655,7 @@ if __name__ == '__main__':
     state_file_dir = sys.argv[9]
     run_infinite = sys.argv[10]
     logger = ast.literal_eval(sys.argv[11])
+    collect_dumps = sys.argv[12]
     SysTestMon().run(master_node, rest_username, rest_password, ssh_username, ssh_password,
                      cbcollect_on_high_mem_cpu_usage, print_all_logs, email_recipients, state_file_dir, run_infinite,
-                     logger)
+                     logger, collect_dumps)
