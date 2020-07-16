@@ -264,15 +264,15 @@ class SysTestMon():
                     self.logger.warn(
                         "***** ALERT : Memory usage on {0} is very high : {1}%".format(
                             node["hostname"], node["memUsage"]))
-                    if cbcollect_on_high_mem_cpu_usage:
-                        should_cbcollect = True
+                    # if cbcollect_on_high_mem_cpu_usage:
+                    #    should_cbcollect = True
 
                 if node["cpuUsage"] > self.cpu_threshold:
                     self.logger.warn(
                         "***** ALERT : CPU usage on {0} is very high : {1}%".format(
                             node["hostname"], node["cpuUsage"]))
-                    if cbcollect_on_high_mem_cpu_usage:
-                        should_cbcollect = True
+                    # if cbcollect_on_high_mem_cpu_usage:
+                    #    should_cbcollect = True
 
                 if node["status"] != "healthy":
                     self.logger.warn(
