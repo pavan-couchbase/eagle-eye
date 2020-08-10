@@ -281,6 +281,8 @@ class SysTestMon():
                     if cbcollect_on_high_mem_cpu_usage:
                         should_cbcollect = True
 
+                self.check_on_disk_usage(node["hostname"])
+
             last_scan_timestamp = datetime.now() - timedelta(minutes=10.0)
             self.logger.info("Last scan timestamp :" + str(last_scan_timestamp))
             self.keyword_counts["last_scan_timestamp"] = str(last_scan_timestamp)
@@ -351,6 +353,19 @@ class SysTestMon():
             if not self.run_infinite:
                 break
             time.sleep(self.scan_interval)
+
+    def check_on_disk_usage(self, node):
+        self.logger.info("=======" + node + "===========")
+        command = "df -kh /data"
+        _, df_output, std_err = self.execute_command(
+            command, node, ssh_username, ssh_password)
+        if std_err:
+            self.logger.error(
+                "Error seen while running df -kh ")
+            self.logger.info(std_err)
+        else:
+            for i in range(len(df_output)):
+                self.logger.info(df_output[i])
 
     def send_email(self, message_sub, message_content, email_recipients):
         SENDMAIL = "/usr/sbin/sendmail"  # sendmail location
