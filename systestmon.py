@@ -210,8 +210,14 @@ class SysTestMon():
                         else:
                             command = "zgrep -i \"{0}\" /opt/couchbase/var/lib/couchbase/logs/{1}".format(
                                 keyword, component["logfiles"])
-                        occurences, output, std_err = self.execute_command(
-                            command, node, ssh_username, ssh_password)
+                        occurences = 0
+                        try:
+                            occurences, output, std_err = self.execute_command(
+                                command, node, ssh_username, ssh_password)
+                        except Exception, e:
+                            self.logger.info("Found an exception {0}".format(e))
+                            message_content = message_content + '\n\n' + node + " : " + str(component["component"])
+                            message_content = message_content + '\n\n' + "Found an exception {0}".format(e) + "\n"
                         if occurences > 0:
                             self.logger.warn(
                                 "*** {0} occurences of {1} keyword found on {2} ***".format(
