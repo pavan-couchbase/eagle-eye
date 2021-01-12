@@ -71,7 +71,7 @@ class SysTestMon():
             "component": "fts",
             "logfiles": "fts.log*",
             "services": "fts",
-            "keywords": ["panic", "fatal", "\[ERRO\]","\[WARN\]"],
+            "keywords": ["panic", "fatal", "\[ERRO\]"],
             "ignore_keywords": "Fatal:false",
             "check_stats_api": True,
             "stats_api_list": ["api/stats"],
