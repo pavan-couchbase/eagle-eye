@@ -16,6 +16,9 @@ import paramiko
 import requests
 from collections import Mapping, Sequence, Set, deque
 
+from scp import SCPClient
+
+
 class SysTestMon():
     # Input map of keywords to be mined for in the logs
     configuration = [
@@ -23,7 +26,7 @@ class SysTestMon():
             "component": "memcached",
             "logfiles": "babysitter.log*",
             "services": "all",
-            "keywords": ["exception occurred in runloop", "failover exited with reason", "Basic\s[a-zA-Z]\{10,\}=="],
+            "keywords": ["exception occurred in runloop", "failover exited with reason", "Basic\s[a-zA-Z]\{4,\}", "Menelaus-Auth-User:\["],
             "ignore_keywords": None,
             "check_stats_api": False,
             "collect_dumps": False
@@ -32,7 +35,7 @@ class SysTestMon():
             "component": "memcached",
             "logfiles": "memcached.log.*",
             "services": "all",
-            "keywords": ["CRITICAL", "Basic\s[a-zA-Z]\{10,\}=="],
+            "keywords": ["CRITICAL", "Basic\s[a-zA-Z]\{4,\}", "Menelaus-Auth-User:\["],
             "ignore_keywords": None,
             "check_stats_api": False,
             "collect_dumps": False
@@ -42,7 +45,7 @@ class SysTestMon():
             "logfiles": "indexer.log*",
             "services": "index",
             "keywords": ["panic", "fatal", "Error parsing XATTR", "zero", "protobuf.Error", "Encounter planner error",
-                         "corruption", "processFlushAbort", "Basic\s[a-zA-Z]\{10,\}=="],
+                         "corruption", "processFlushAbort", "Basic\s[a-zA-Z]\{4,\}", "Menelaus-Auth-User:\["],
             "ignore_keywords": None,
             "check_stats_api": True,
             "stats_api_list": ["stats/storage", "stats"],
@@ -54,7 +57,7 @@ class SysTestMon():
             "logfiles": "analytics_error*",
             "services": "cbas",
             "keywords": ["fata", "Analytics Service is temporarily unavailable", "Failed during startup task", "HYR0",
-                         "ASX", "IllegalStateException", "Basic\s[a-zA-Z]\{10,\}=="],
+                         "ASX", "IllegalStateException", "Basic\s[a-zA-Z]\{4,\}", "Menelaus-Auth-User:\["],
             "ignore_keywords": None,
             "check_stats_api": False,
             "collect_dumps": False
@@ -63,7 +66,7 @@ class SysTestMon():
             "component": "eventing",
             "logfiles": "eventing.log*",
             "services": "eventing",
-            "keywords": ["panic", "fatal", "Basic\s[a-zA-Z]\{10,\}=="],
+            "keywords": ["panic", "fatal", "Basic\s[a-zA-Z]\{4,\}", "Menelaus-Auth-User:\["],
             "ignore_keywords": None,
             "check_stats_api": False,
             "collect_dumps": False
@@ -72,7 +75,7 @@ class SysTestMon():
             "component": "fts",
             "logfiles": "fts.log*",
             "services": "fts",
-            "keywords": ["panic", "fatal", "\[ERRO\]", "Basic\s[a-zA-Z]\{10,\}=="],
+            "keywords": ["panic", "fatal", "\[ERRO\]", "Basic\s[a-zA-Z]\{4,\}", "Menelaus-Auth-User:\["],
             "ignore_keywords": "Fatal:false",
             "check_stats_api": True,
             "stats_api_list": ["api/stats"],
@@ -83,7 +86,7 @@ class SysTestMon():
             "component": "xdcr",
             "logfiles": "*xdcr*.log*",
             "services": "kv",
-            "keywords": ["panic", "fatal", "Basic\s[a-zA-Z]\{10,\}=="],
+            "keywords": ["panic", "fatal", "Basic\s[a-zA-Z]\{4,\}", "Menelaus-Auth-User:\["],
             "ignore_keywords": None,
             "check_stats_api": False,
             "collect_dumps": False
@@ -93,7 +96,7 @@ class SysTestMon():
             "logfiles": "projector.log*",
             "services": "kv",
             #"keywords": ["panic", "Error parsing XATTR", "fata"],
-            "keywords": ["panic", "Error parsing XATTR", "Basic\s[a-zA-Z]\{10,\}=="],
+            "keywords": ["panic", "Error parsing XATTR", "Basic\s[a-zA-Z]\{4,\}", "Menelaus-Auth-User:\["],
             "ignore_keywords": None,
             "check_stats_api": False,
             "port": "9999",
@@ -103,7 +106,7 @@ class SysTestMon():
             "component": "rebalance",
             "logfiles": "error.log*",
             "services": "all",
-            "keywords": ["rebalance exited", "failover exited with reason", "Basic\s[a-zA-Z]\{10,\}=="],
+            "keywords": ["rebalance exited", "failover exited with reason", "Basic\s[a-zA-Z]\{4,\}", "Menelaus-Auth-User:\["],
             "ignore_keywords": None,
             "check_stats_api": False,
             "collect_dumps": False
@@ -112,7 +115,7 @@ class SysTestMon():
             "component": "crash",
             "logfiles": "info.log*",
             "services": "all",
-            "keywords": ["exited with status", "failover exited with reason", "Basic\s[a-zA-Z]\{10,\}=="],
+            "keywords": ["exited with status", "failover exited with reason", "Basic\s[a-zA-Z]\{4,\}", "Menelaus-Auth-User:\["],
             "ignore_keywords": "exited with status 0",
             "check_stats_api": False,
             "collect_dumps": False
@@ -121,7 +124,7 @@ class SysTestMon():
             "component": "query",
             "logfiles": "query.log*",
             "services": "n1ql",
-            "keywords": ["panic", "fatal", "Encounter planner error", "Basic\s[a-zA-Z]\{10,\}=="],
+            "keywords": ["panic", "fatal", "Encounter planner error", "Basic\s[a-zA-Z]\{4,\}", "Menelaus-Auth-User:\["],
             "ignore_keywords": None,
             "check_stats_api": False,
             "collect_dumps": True,
@@ -146,7 +149,7 @@ class SysTestMon():
 
     def run(self, master_node, rest_username, rest_password, ssh_username, ssh_password,
             cbcollect_on_high_mem_cpu_usage, print_all_logs, email_recipients, state_file_dir, run_infinite, logger,
-            should_collect_dumps):
+            should_collect_dumps, docker_host):
         # Logging configuration
         if not logger:
             self.logger = logging.getLogger("systestmon")
@@ -295,6 +298,26 @@ class SysTestMon():
             self.logger.info("Last scan timestamp :" + str(last_scan_timestamp))
             self.keyword_counts["last_scan_timestamp"] = str(last_scan_timestamp)
 
+            if docker_host != "None":
+                command = "docker ps -q | xargs docker inspect --format {{.LogPath}}"
+                occurences, output, std_err = self.execute_command(
+                    command, docker_host, ssh_username, ssh_password)
+
+                self.docker_logs_dump = "docker_dump_collected_" + str(iter_count)
+                os.mkdir(self.docker_logs_dump)
+
+                scp_client = self.get_scp_client(docker_host, ssh_username, ssh_password)
+
+                for file in output:
+                    scp_client.get(file, local_path=self.docker_logs_dump)
+
+                docker_logs_location = "{0}/{1}".format(os.getcwd(), self.docker_logs_dump)
+                message_content = message_content + '\n\n Docker logs collected at: ' + docker_logs_location
+
+                self.logger.info("Collecting all docker logs completed. Docker logs at : {0}".format(docker_logs_location))
+
+
+
             collected = False
 
             while should_cbcollect and not collected:
@@ -361,6 +384,14 @@ class SysTestMon():
             if not self.run_infinite:
                 break
             time.sleep(self.scan_interval)
+
+    def get_scp_client(self, host, username, password):
+        client = paramiko.SSHClient()
+        client.load_system_host_keys()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        client.connect(host , username=username, password=password)
+        scp_client = SCPClient(client.get_transport())
+        return scp_client
 
     def check_on_disk_usage(self, node):
         self.logger.info("=======" + node + "===========")
@@ -679,6 +710,7 @@ if __name__ == '__main__':
     run_infinite = sys.argv[10]
     logger = ast.literal_eval(sys.argv[11])
     should_collect_dumps = sys.argv[12]
+    docker_host = sys.argv[13]
     SysTestMon().run(master_node, rest_username, rest_password, ssh_username, ssh_password,
                      cbcollect_on_high_mem_cpu_usage, print_all_logs, email_recipients, state_file_dir, run_infinite,
-                     logger, should_collect_dumps)
+                     logger, should_collect_dumps, docker_host)
