@@ -304,7 +304,8 @@ class SysTestMon():
                     occurences, output, std_err = self.execute_command(
                         command, docker_host, ssh_username, ssh_password)
 
-                    self.docker_logs_dump = "docker_dump_collected_" + str(iter_count)
+                    self.docker_logs_dump = "docker_dump_collected_" + str(iter_count) \
+                                            + "_" + str(datetime.timestamp(datetime.now()))
                     os.mkdir(self.docker_logs_dump)
 
                     scp_client = self.get_scp_client(docker_host, ssh_username, ssh_password)
