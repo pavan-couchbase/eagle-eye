@@ -318,7 +318,7 @@ class SysTestMon():
                     self.logger.info(
                         "Collecting all docker logs completed. Docker logs at : {0}".format(docker_logs_location))
                 except Exception as e:
-                    self.logger.info("Could not collect docker logs")
+                    self.logger.info("Could not collect docker logs : {0}".format(str(e)))
 
 
 
