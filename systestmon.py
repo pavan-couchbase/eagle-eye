@@ -3,7 +3,7 @@ import json
 import logging
 import re
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timestamp
 import httplib2
 import traceback
 import socket
@@ -178,7 +178,6 @@ class SysTestMon():
         self.state_file = state_file_dir + "/eagle-eye_" + master_node + ".state"
         last_scan_timestamp = ""
         iter_count = 1
-        os.system("rm -rf dump_collected_*")
         while True:
             if os.path.exists(self.state_file):
                 s = open(self.state_file, 'r').read()
@@ -305,7 +304,7 @@ class SysTestMon():
                         command, docker_host, ssh_username, ssh_password)
 
                     self.docker_logs_dump = "docker_dump_collected_" + str(iter_count) \
-                                            + "_" + str(datetime.timestamp(datetime.now()))
+                                            + "_" + str(datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))
                     os.mkdir(self.docker_logs_dump)
 
                     scp_client = self.get_scp_client(docker_host, ssh_username, ssh_password)
