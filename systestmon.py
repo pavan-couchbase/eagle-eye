@@ -395,7 +395,7 @@ class SysTestMon():
         client = paramiko.SSHClient()
         client.load_system_host_keys()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        client.connect(host , username=username, password=password)
+        client.connect(host, username=username, password=password, timeout=120, banner_timeout=120)
         scp_client = SCPClient(client.get_transport())
         return scp_client
 
