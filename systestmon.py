@@ -299,22 +299,26 @@ class SysTestMon():
             self.keyword_counts["last_scan_timestamp"] = str(last_scan_timestamp)
 
             if docker_host != "None":
-                command = "docker ps -q | xargs docker inspect --format {{.LogPath}}"
-                occurences, output, std_err = self.execute_command(
-                    command, docker_host, ssh_username, ssh_password)
+                try:
+                    command = "docker ps -q | xargs docker inspect --format {{.LogPath}}"
+                    occurences, output, std_err = self.execute_command(
+                        command, docker_host, ssh_username, ssh_password)
 
-                self.docker_logs_dump = "docker_dump_collected_" + str(iter_count)
-                os.mkdir(self.docker_logs_dump)
+                    self.docker_logs_dump = "docker_dump_collected_" + str(iter_count)
+                    os.mkdir(self.docker_logs_dump)
 
-                scp_client = self.get_scp_client(docker_host, ssh_username, ssh_password)
+                    scp_client = self.get_scp_client(docker_host, ssh_username, ssh_password)
 
-                for file in output:
-                    scp_client.get(file, local_path=self.docker_logs_dump)
+                    for file in output:
+                        scp_client.get(file, local_path=self.docker_logs_dump)
 
-                docker_logs_location = "{0}/{1}".format(os.getcwd(), self.docker_logs_dump)
-                message_content = message_content + '\n\n Docker logs collected at: ' + docker_logs_location
+                    docker_logs_location = "{0}/{1}".format(os.getcwd(), self.docker_logs_dump)
+                    message_content = message_content + '\n\n Docker logs collected at: ' + docker_logs_location
 
-                self.logger.info("Collecting all docker logs completed. Docker logs at : {0}".format(docker_logs_location))
+                    self.logger.info(
+                        "Collecting all docker logs completed. Docker logs at : {0}".format(docker_logs_location))
+                except Exception as e:
+                    self.logger.info("Could not collect docker logs")
 
 
 
