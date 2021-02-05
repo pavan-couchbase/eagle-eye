@@ -3,7 +3,7 @@ import json
 import logging
 import re
 import sys
-from datetime import datetime, timedelta, timestamp
+from datetime import datetime, timedelta
 import httplib2
 import traceback
 import socket
