@@ -309,10 +309,11 @@ class SysTestMon():
                                             + "_" + str(datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))
                     os.mkdir(self.docker_logs_dump)
 
-                    scp_client = self.get_scp_client(docker_host, ssh_username, ssh_password)
+                    ssh_client = self.get_ssh_client(docker_host, ssh_username, ssh_password)
 
                     for file in output:
-                        scp_client.get(file, local_path=self.docker_logs_dump)
+                        with SCPClient(ssh_client.get_transport()) as scp:
+                            scp.get(file, local_path=self.docker_logs_dump)
 
                     docker_logs_location = "{0}/{1}".format(os.getcwd(), self.docker_logs_dump)
                     message_content = message_content + '\n\n Docker logs collected at: ' + docker_logs_location
@@ -391,13 +392,12 @@ class SysTestMon():
                 break
             time.sleep(self.scan_interval)
 
-    def get_scp_client(self, host, username, password):
+    def get_ssh_client(self, host, username, password):
         client = paramiko.SSHClient()
         client.load_system_host_keys()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         client.connect(host, username=username, password=password, timeout=120, banner_timeout=120)
-        scp_client = SCPClient(client.get_transport())
-        return scp_client
+        return client
 
     def check_on_disk_usage(self, node):
         self.logger.info("=======" + node + "===========")
