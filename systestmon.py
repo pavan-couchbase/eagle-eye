@@ -187,7 +187,8 @@ class SysTestMon():
             else:
                 prev_keyword_counts = None
             self.dump_dir_name = "dump_collected_" + str(iter_count)
-            os.mkdir(self.dump_dir_name)
+            if not os.path.isdir(self.dump_dir_name):
+                os.mkdir(self.dump_dir_name)
             should_cbcollect = False
             message_content = ""
             message_sub = ""
