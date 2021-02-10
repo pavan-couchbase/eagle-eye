@@ -48,7 +48,7 @@ class SysTestMon():
             "keywords": ["panic", "fatal", "Error parsing XATTR", "zero", "protobuf.Error", "Encounter planner error",
                          "corruption", "processFlushAbort", "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\[", 
                          "Failed to initialize metadata provider", "Waiting for Node Alloc"],
-            "ignore_keywords": None,
+            "ignore_keywords": "fatal remote",
             "check_stats_api": True,
             "stats_api_list": ["stats/storage", "stats"],
             "port": "9102",
@@ -78,7 +78,7 @@ class SysTestMon():
             "logfiles": "fts.log*",
             "services": "fts",
             "keywords": ["panic", "fatal", "\[ERRO\]", "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\["],
-            "ignore_keywords": "Fatal:false",
+            "ignore_keywords": ["Fatal:false"],
             "check_stats_api": True,
             "stats_api_list": ["api/stats"],
             "port": "8094",
@@ -120,7 +120,7 @@ class SysTestMon():
             "services": "all",
             "keywords": ["exited with status", "failover exited with reason", "Basic\s[a-zA-Z]\{10,\}",
                          "Menelaus-Auth-User:\["],
-            "ignore_keywords": "exited with status 0",
+            "ignore_keywords": ["exited with status 0"],
             "check_stats_api": False,
             "collect_dumps": False
         },
@@ -215,8 +215,9 @@ class SysTestMon():
 
                     for node in nodes:
                         if component["ignore_keywords"]:
+
                             command = "zgrep -i \"{0}\" /opt/couchbase/var/lib/couchbase/logs/{1} | grep -vE \"{2}\"".format(
-                                keyword, component["logfiles"], component["ignore_keywords"])
+                                keyword, component["logfiles"], "|".join(component["ignore_keywords"]))
                         else:
                             command = "zgrep -i \"{0}\" /opt/couchbase/var/lib/couchbase/logs/{1}".format(
                                 keyword, component["logfiles"])
