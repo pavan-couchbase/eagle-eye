@@ -78,7 +78,7 @@ class SysTestMon():
             "logfiles": "fts.log*",
             "services": "fts",
             "keywords": ["panic", "fatal", "\[ERRO\]", "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\["],
-            "ignore_keywords": ["Fatal:false"],
+            "ignore_keywords": ["Fatal:false", "use of closed network connection"],
             "check_stats_api": True,
             "stats_api_list": ["api/stats"],
             "port": "8094",
