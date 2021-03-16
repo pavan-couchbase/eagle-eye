@@ -135,7 +135,17 @@ class SysTestMon():
             "check_stats_api": False,
             "collect_dumps": True,
             "port": "8093"
-
+        },
+        {
+            "component": "backup",
+            "logfiles": "backup_service.log*",
+            "services": "backup",
+            "keywords": ["panic", "fatal", "warn", "Failed Task",
+                         "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\["],
+            "ignore_keywords": None,
+            "check_stats_api": False,
+            "collect_dumps": True,
+            "port": "8097"
         }
     ]
     # Frequency of scanning the logs in seconds
