@@ -37,7 +37,7 @@ class SysTestMon():
             "component": "memcached",
             "logfiles": "memcached.log.*",
             "services": "all",
-            "keywords": ["CRITICAL", "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\["],
+            "keywords": ["CRITICAL", "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\[", "unrecoverable"],
             "ignore_keywords": None,
             "check_stats_api": False,
             "collect_dumps": False,
