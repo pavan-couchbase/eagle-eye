@@ -325,42 +325,43 @@ class SysTestMon():
                     try:
                         occurences, output, std_err = self.execute_command(
                         command, nodes[0], ssh_username, ssh_password)
-                        with open(os.path.join(path, file), 'w') as fp:
-                            json.dump(output, fp)
-                            #fp.write(str(output))
-                            fp.close()
+                        # with open(os.path.join(path, file), 'w') as fp:
+                        #     json.dump(output, fp)
+                        #     #fp.write(str(output))
+                        #     fp.close()
+                        self.logger.info(str(output))
                         # TO DO, check the result count of the above query
                     except Exception as e:
                         self.logger.info("Found an exception {0}".format(e))
                         message_content = message_content + '\n\n' + node + " : " + str(component["component"])
                         message_content = message_content + '\n\n' + "Found an exception {0}".format(e) + "\n"
-                    self.logger.info("Errors from completed_requests stored at {0}/{1}".format(path,file))
+                    #self.logger.info("Errors from completed_requests stored at {0}/{1}".format(path,file))
 
 
-                # Get a dump of the completed_requests and active_requests
-                if component["collect_requests"]:
-                    request_type = ["completed_requests", "active_requests"]
-                    for request in request_type:
-                        collection_timestamp = time.time()
-                        collection_timestamp = str(collection_timestamp).replace(".", "")
-                        path = os.getcwd()
-                        file = "query_{0}_{1}.json".format(request, collection_timestamp)
-                        self.logger.info("Collecting {0} at {1}".format(request,collection_timestamp))
-                        command = "curl http://{0}:{1}/admin/{2} -u {3}:{4}".format(nodes[0], component["port"], request, rest_username, rest_password)
-                        self.logger.info("Running curl: {0}".format(command))
-                        try:
-                            occurences, output, std_err = self.execute_command(
-                            command, nodes[0], ssh_username, ssh_password)
-                            with open(os.path.join(path, file), 'w') as fp:
-                                json.dump(output, fp)
-                                #fp.write(str(output))
-                                fp.close()
-                        except Exception as e:
-                            self.logger.info("Found an exception {0}".format(e))
-                            message_content = message_content + '\n\n' + node + " : " + str(component["component"])
-                            message_content = message_content + '\n\n' + "Found an exception {0}".format(e) + "\n"
-
-                        self.logger.info("{0} stored at {1}/{2}".format(request,os.getcwd(), file))
+                # # Get a dump of the completed_requests and active_requests
+                # if component["collect_requests"]:
+                #     request_type = ["completed_requests", "active_requests"]
+                #     for request in request_type:
+                #         collection_timestamp = time.time()
+                #         collection_timestamp = str(collection_timestamp).replace(".", "")
+                #         path = os.getcwd()
+                #         file = "query_{0}_{1}.json".format(request, collection_timestamp)
+                #         self.logger.info("Collecting {0} at {1}".format(request,collection_timestamp))
+                #         command = "curl http://{0}:{1}/admin/{2} -u {3}:{4}".format(nodes[0], component["port"], request, rest_username, rest_password)
+                #         self.logger.info("Running curl: {0}".format(command))
+                #         try:
+                #             occurences, output, std_err = self.execute_command(
+                #             command, nodes[0], ssh_username, ssh_password)
+                #             with open(os.path.join(path, file), 'w') as fp:
+                #                 json.dump(output, fp)
+                #                 #fp.write(str(output))
+                #                 fp.close()
+                #         except Exception as e:
+                #             self.logger.info("Found an exception {0}".format(e))
+                #             message_content = message_content + '\n\n' + node + " : " + str(component["component"])
+                #             message_content = message_content + '\n\n' + "Found an exception {0}".format(e) + "\n"
+                #
+                #         self.logger.info("{0} stored at {1}/{2}".format(request,os.getcwd(), file))
 
             # Check for health of all nodes
             for node in node_map:
