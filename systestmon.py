@@ -49,7 +49,7 @@ class SysTestMon():
             "services": "index",
             "keywords": ["panic", "fatal", "Error parsing XATTR", "zero", "protobuf.Error", "Encounter planner error",
                          "corruption", "processFlushAbort", "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\[",
-                         "Failed to initialize metadata provider", "Waiting for Node Alloc", "found missing page", "invalid last page"],
+                         "Failed to initialize metadata provider", "memdb.StoreToDisk", "Waiting for Node Alloc", "found missing page", "invalid last page"],
             "ignore_keywords": ["fatal remote"],
             "check_stats_api": True,
             "stats_api_list": ["stats/storage", "stats"],
@@ -385,7 +385,7 @@ class SysTestMon():
                             node["hostname"], node["status"]))
                     if cbcollect_on_high_mem_cpu_usage:
                         should_cbcollect = True
-
+                # self.check_on_ntp_status(node["hostname"])
                 self.check_on_disk_usage(node["hostname"])
 
             last_scan_timestamp = datetime.now() - timedelta(minutes=10.0)
@@ -504,6 +504,20 @@ class SysTestMon():
         else:
             for i in range(len(df_output)):
                 self.logger.info(df_output[i])
+
+    def check_on_ntp_status(self, node):
+        self.logger.info("=======" + node + "===========")
+        command = "timedatectl status | grep NTP"
+        _, df_output, std_err = self.execute_command(
+            command, node, ssh_username, ssh_password)
+        if std_err:
+            self.logger.error(
+                "Error seen while running df -kh ")
+            self.logger.info(std_err)
+        else:
+            for i in range(len(df_output)):
+                self.logger.info(df_output[i])
+
 
     def send_email(self, message_sub, message_content, email_recipients):
         SENDMAIL = "/usr/sbin/sendmail"  # sendmail location
