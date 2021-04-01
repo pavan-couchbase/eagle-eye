@@ -11,6 +11,7 @@ import time
 import base64
 import os
 import ast
+import zipfile
 
 import paramiko
 import requests
@@ -30,8 +31,7 @@ class SysTestMon():
                          "Menelaus-Auth-User:\["],
             "ignore_keywords": None,
             "check_stats_api": False,
-            "collect_dumps": False,
-            "collect_requests": False
+            "collect_dumps": False
         },
         {
             "component": "memcached",
@@ -40,8 +40,7 @@ class SysTestMon():
             "keywords": ["CRITICAL", "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\[", "unrecoverable"],
             "ignore_keywords": None,
             "check_stats_api": False,
-            "collect_dumps": False,
-            "collect_requests": False
+            "collect_dumps": False
         },
         {
             "component": "index",
@@ -54,8 +53,7 @@ class SysTestMon():
             "check_stats_api": True,
             "stats_api_list": ["stats/storage", "stats"],
             "port": "9102",
-            "collect_dumps": True,
-            "collect_requests": False
+            "collect_dumps": True
         },
         {
             "component": "analytics",
@@ -65,8 +63,7 @@ class SysTestMon():
                          "ASX", "IllegalStateException", "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\[", "panic"],
             "ignore_keywords": ["HYR0010","HYR0115","ASX3110","HYR0114"],
             "check_stats_api": False,
-            "collect_dumps": False,
-            "collect_requests": False
+            "collect_dumps": False
         },
         {
             "component": "eventing",
@@ -75,8 +72,7 @@ class SysTestMon():
             "keywords": ["panic", "fatal", "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\["],
             "ignore_keywords": None,
             "check_stats_api": False,
-            "collect_dumps": False,
-            "collect_requests": False
+            "collect_dumps": False
         },
         {
             "component": "fts",
@@ -88,8 +84,7 @@ class SysTestMon():
             "check_stats_api": True,
             "stats_api_list": ["api/stats"],
             "port": "8094",
-            "collect_dumps": True,
-            "collect_requests": False
+            "collect_dumps": True
         },
         {
             "component": "xdcr",
@@ -98,8 +93,7 @@ class SysTestMon():
             "keywords": ["Failed on calling", "panic", "fatal", "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\["],
             "ignore_keywords": None,
             "check_stats_api": False,
-            "collect_dumps": False,
-            "collect_requests": False
+            "collect_dumps": False
         },
         {
             "component": "projector",
@@ -110,8 +104,7 @@ class SysTestMon():
             "ignore_keywords": None,
             "check_stats_api": False,
             "port": "9999",
-            "collect_dumps": True,
-            "collect_requests": False
+            "collect_dumps": True
         },
         {
             "component": "rebalance",
@@ -121,8 +114,7 @@ class SysTestMon():
                          "Menelaus-Auth-User:\["],
             "ignore_keywords": None,
             "check_stats_api": False,
-            "collect_dumps": False,
-            "collect_requests": False
+            "collect_dumps": False
         },
         {
             "component": "crash",
@@ -132,8 +124,7 @@ class SysTestMon():
                          "Menelaus-Auth-User:\["],
             "ignore_keywords": ["exited with status 0"],
             "check_stats_api": False,
-            "collect_dumps": False,
-            "collect_requests": False
+            "collect_dumps": False
         },
         {
             "component": "query",
@@ -144,7 +135,6 @@ class SysTestMon():
             "ignore_keywords": ["not available"],
             "check_stats_api": False,
             "collect_dumps": True,
-            "collect_requests": True,
             "port": "8093"
         },
         {
@@ -156,7 +146,6 @@ class SysTestMon():
             "ignore_keywords": None,
             "check_stats_api": False,
             "collect_dumps": True,
-            "collect_requests": False,
             "port": "8097"
         }
     ]
@@ -325,43 +314,60 @@ class SysTestMon():
                     try:
                         occurences, output, std_err = self.execute_command(
                         command, nodes[0], ssh_username, ssh_password)
-                        # with open(os.path.join(path, file), 'w') as fp:
-                        #     json.dump(output, fp)
-                        #     #fp.write(str(output))
-                        #     fp.close()
-                        self.logger.info(str(output))
-                        # TO DO, check the result count of the above query
+                        # Convert the output to a json dict that we can parse
+                        results = self.convert_output_to_json(output)
+                        # If there are results store the results in a file
+                        if results['metrics']['resultCount'] > 0:
+                            self.logger.info("We found errors in completed requests, storing errors to a file")
+                            with open(os.path.join(path, file), 'w') as fp:
+                                json.dump(results, fp, indent=4)
+                                fp.close()
+                            zipname = path + "/query_completed_requests_errors_{0}.zip".format(collection_timestamp)
+                            zipfile.ZipFile(zipname, mode='w').write(file)
+                            os.remove(file)
+                            file = file.replace(".txt", ".zip")
+                            self.logger.info("Errors from completed_requests stored at {0}/{1}".format(path, file))
+                            self.logger.info("After storing competed_requests_errors we will delete them from the server")
+                            command = "curl http://{0}:{1}/query/service -u {2}:{3} -d 'statement=delete from system:completed_requests where errorCount > 0'".format(
+                                node, component["port"], rest_username, rest_password)
+                            self.logger.info("Running curl: {0}".format(command))
+                            occurences, output, std_err = self.execute_command(
+                                command, nodes[0], ssh_username, ssh_password)
+                            should_cbcollect = True
                     except Exception as e:
                         self.logger.info("Found an exception {0}".format(e))
                         message_content = message_content + '\n\n' + node + " : " + str(component["component"])
                         message_content = message_content + '\n\n' + "Found an exception {0}".format(e) + "\n"
-                    #self.logger.info("Errors from completed_requests stored at {0}/{1}".format(path,file))
 
-
-                # # Get a dump of the completed_requests and active_requests
-                # if component["collect_requests"]:
-                #     request_type = ["completed_requests", "active_requests"]
-                #     for request in request_type:
-                #         collection_timestamp = time.time()
-                #         collection_timestamp = str(collection_timestamp).replace(".", "")
-                #         path = os.getcwd()
-                #         file = "query_{0}_{1}.json".format(request, collection_timestamp)
-                #         self.logger.info("Collecting {0} at {1}".format(request,collection_timestamp))
-                #         command = "curl http://{0}:{1}/admin/{2} -u {3}:{4}".format(nodes[0], component["port"], request, rest_username, rest_password)
-                #         self.logger.info("Running curl: {0}".format(command))
-                #         try:
-                #             occurences, output, std_err = self.execute_command(
-                #             command, nodes[0], ssh_username, ssh_password)
-                #             with open(os.path.join(path, file), 'w') as fp:
-                #                 json.dump(output, fp)
-                #                 #fp.write(str(output))
-                #                 fp.close()
-                #         except Exception as e:
-                #             self.logger.info("Found an exception {0}".format(e))
-                #             message_content = message_content + '\n\n' + node + " : " + str(component["component"])
-                #             message_content = message_content + '\n\n' + "Found an exception {0}".format(e) + "\n"
-                #
-                #         self.logger.info("{0} stored at {1}/{2}".format(request,os.getcwd(), file))
+                    # Check active_requests to make sure that are no more than 1k active requests at a single time
+                    self.logger.info("Checking system:active requests for too many requests")
+                    collection_timestamp = time.time()
+                    collection_timestamp = str(collection_timestamp).replace(".", "")
+                    path = os.getcwd()
+                    file = "query_active_requests_{0}.txt".format(collection_timestamp)
+                    command = "curl http://{0}:{1}/query/service -u {2}:{3} -d 'statement=select * from system:active_requests'".format(node, component["port"], rest_username, rest_password)
+                    self.logger.info("Running curl: {0}".format(command))
+                    try:
+                        occurences, output, std_err = self.execute_command(
+                        command, nodes[0], ssh_username, ssh_password)
+                        # Convert the output to a json dict that we can parse
+                        results = self.convert_output_to_json(output)
+                        # If there are results store the results in a file
+                        if results['metrics']['resultCount'] > 1000:
+                            self.logger.info("There are more than 1000 queries running right now, this should not be the case. Storing active_requests for further review")
+                            with open(os.path.join(path, file), 'w') as fp:
+                                json.dump(results, fp, indent=4)
+                                fp.close()
+                            zipname = path + "/query_active_requests_{0}.zip".format(collection_timestamp)
+                            zipfile.ZipFile(zipname, mode='w').write(file)
+                            os.remove(file)
+                            file = file.replace(".txt", ".zip")
+                            self.logger.info("Active requests stored at {0}/{1}".format(path, file))
+                            should_cbcollect = True
+                    except Exception as e:
+                        self.logger.info("Found an exception {0}".format(e))
+                        message_content = message_content + '\n\n' + node + " : " + str(component["component"])
+                        message_content = message_content + '\n\n' + "Found an exception {0}".format(e) + "\n"
 
             # Check for health of all nodes
             for node in node_map:
@@ -626,6 +632,12 @@ class SysTestMon():
             json_parsed = json.loads(content)
             # self.logger.info(json_parsed)
         return json_parsed
+
+    def convert_output_to_json(self, output):
+        list_to_string = ''
+        list_to_string = list_to_string.join(output)
+        json_output = json.loads(list_to_string)
+        return json_output
 
     def _create_headers(self):
         authorization = base64.encodestring('%s:%s' % ("Administrator", "password"))
