@@ -60,7 +60,7 @@ class SysTestMon():
             "logfiles": "analytics_error*",
             "services": "cbas",
             "keywords": ["fata", "Analytics Service is temporarily unavailable", "Failed during startup task", "HYR0",
-                         "ASX", "IllegalStateException", "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\[", "panic"],
+                         "ASX", "IllegalStateException", "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\[", "panic", "LEAK"],
             "ignore_keywords": ["HYR0010","HYR0115","ASX3110","HYR0114"],
             "check_stats_api": False,
             "collect_dumps": False
