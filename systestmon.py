@@ -48,7 +48,8 @@ class SysTestMon():
             "services": "index",
             "keywords": ["panic", "fatal", "Error parsing XATTR", "zero", "protobuf.Error", "Encounter planner error",
                          "corruption", "processFlushAbort", "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\[",
-                         "Failed to initialize metadata provider", "memdb.StoreToDisk", "Waiting for Node Alloc", "found missing page", "invalid last page"],
+                         "Failed to initialize metadata provider", "log cleaner: encounter fatal error",
+                         "Waiting for Node Alloc", "found missing page", "invalid last page"],
             "ignore_keywords": ["fatal remote"],
             "check_stats_api": True,
             "stats_api_list": ["stats/storage", "stats"],
@@ -251,7 +252,11 @@ class SysTestMon():
                             message_content = message_content + '\n\n' + node + " : " + str(component["component"])
                             if print_all_logs.lower() == "true" or last_scan_timestamp == "":
                                 self.logger.debug('\n'.join(output))
-                                message_content = message_content + '\n' + '\n'.join(output)
+                                try:
+                                    message_content = message_content + '\n' + '\n'.join(output)
+                                except UnicodeDecodeError as e:
+                                    self.logger.warn(str(e))
+                                    message_content = message_content + '\n' + '\n'.join(output).decode("utf-8")
                             else:
                                 message_content = self.print_output(output, last_scan_timestamp, message_content)
                             # for i in range(len(output)):
@@ -548,7 +553,11 @@ class SysTestMon():
         import os
 
         p = os.popen("%s -t -i" % SENDMAIL, "w")
-        p.write(message)
+        try:
+            p.write(message)
+        except UnicodeEncodeError as e:
+            self.logger.warn(str(e))
+            p.write(message.encode("utf-8"))
         status = p.close()
         if status:
             print "Sendmail exit status", status
