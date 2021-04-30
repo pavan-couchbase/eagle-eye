@@ -37,7 +37,7 @@ class SysTestMon():
             "component": "memcached",
             "logfiles": "memcached.log.*",
             "services": "all",
-            "keywords": ["CRITICAL", "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\[", "ERROR", "XERROR", "exception occurred in runloop"],
+            "keywords": ["CRITICAL", "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\[", "ERROR", "exception occurred in runloop"],
             "ignore_keywords": None,
             "check_stats_api": False,
             "collect_dumps": False
