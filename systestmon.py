@@ -430,8 +430,9 @@ class SysTestMon():
 
 
             collected = False
+            start_time = time.time()
 
-            while should_cbcollect and not collected:
+            while should_cbcollect and not collected and time.time() < (start_time + (60 * 60)):
                 self.logger.info("====== RUNNING CBCOLLECT_INFO ======")
                 # command = "/opt/couchbase/bin/cbcollect_info outputfile.zip --multi-node-diag --upload-host=s3.amazonaws.com/bugdb/jira --customer=systestmon-{0}".format(
                 #    timestamp)
@@ -457,6 +458,7 @@ class SysTestMon():
                         self.logger.error(
                             "Error seen while running cbcollect_info ")
                         self.logger.info(std_err)
+                        break
                     else:
                         # for i in range(len(cbcollect_output)):
                         #    print cbcollect_output[i]
@@ -480,6 +482,7 @@ class SysTestMon():
                             break
                         else:
                             self.logger.error("Issue with cbcollect")
+                            break
 
             self.update_state_file()
 
