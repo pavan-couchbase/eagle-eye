@@ -37,7 +37,7 @@ class SysTestMon():
             "component": "memcached",
             "logfiles": "memcached.log.*",
             "services": "all",
-            "keywords": ["CRITICAL", "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\["],
+            "keywords": ["CRITICAL", "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\[", "ERROR", "XERROR", "exception occurred in runloop"],
             "ignore_keywords": None,
             "check_stats_api": False,
             "collect_dumps": False
@@ -112,7 +112,7 @@ class SysTestMon():
             "logfiles": "error.log*",
             "services": "all",
             "keywords": ["rebalance exited", "failover exited with reason", "Basic\s[a-zA-Z]\{10,\}",
-                         "Menelaus-Auth-User:\["],
+                         "Menelaus-Auth-User:\[","Join completion call failed"],
             "ignore_keywords": None,
             "check_stats_api": False,
             "collect_dumps": False
