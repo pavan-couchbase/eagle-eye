@@ -49,7 +49,7 @@ class SysTestMon():
             "keywords": ["panic", "fatal", "Error parsing XATTR", "zero", "protobuf.Error", "Encounter planner error",
                          "corruption", "processFlushAbort", "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\[",
                          "Failed to initialize metadata provider", "Waiting for Node Alloc", "found missing page", "invalid last page",
-                         "Storage corrupted and unrecoverable"],
+                         "Storage corrupted and unrecoverable", "ensureMonotonicTs  Align seqno smaller than lastFlushTs"],
             "ignore_keywords": ["fatal remote"],
             "check_stats_api": True,
             "stats_api_list": ["stats/storage", "stats"],
