@@ -12,6 +12,7 @@ import base64
 import os
 import ast
 import zipfile
+from couchbase.cluster import Cluster, PasswordAuthenticator
 
 import paramiko
 import requests
@@ -168,7 +169,7 @@ class SysTestMon():
 
     def run(self, master_node, rest_username, rest_password, ssh_username, ssh_password,
             cbcollect_on_high_mem_cpu_usage, print_all_logs, email_recipients, state_file_dir, run_infinite, logger,
-            should_collect_dumps, docker_host):
+            should_collect_dumps, docker_host, cb_host):
         # Logging configuration
         if not logger:
             self.logger = logging.getLogger("systestmon")
@@ -185,6 +186,12 @@ class SysTestMon():
             self.logger.addHandler(fh)
         else:
             self.logger = logger
+
+        try:
+            self.cluster = self.get_cluster(cb_host)
+            self.bucket = self.get_bucket("system_test_dashboard")
+        except Exception:
+            pass
 
         self.run_infinite = ast.literal_eval(run_infinite)
         self.should_collect_dumps = ast.literal_eval(should_collect_dumps)
@@ -494,6 +501,10 @@ class SysTestMon():
                 "Node: {0} : Log scan iteration number {1} complete".format(master_node, iter_count))
             if should_cbcollect:
                 self.send_email(message_sub, message_content, email_recipients)
+                try:
+                    self.store_results(message_content)
+                except Exception:
+                    pass
             iter_count = iter_count + 1
 
             if not self.run_infinite:
@@ -533,6 +544,34 @@ class SysTestMon():
             for i in range(len(df_output)):
                 self.logger.info(df_output[i])
 
+    def get_cluster(self, cb_host):
+        try:
+            cluster = Cluster('couchbase://{}'.format(cb_host))
+            authenticator = PasswordAuthenticator('Administrator', 'password')
+            cluster.authenticate(authenticator)
+            return cluster
+        except Exception:
+            from couchbase.cluster import ClusterOptions
+            cluster = Cluster('couchbase://{}'.format(cb_host), ClusterOptions(PasswordAuthenticator('Administrator', 'password')))
+            return cluster
+
+    def get_bucket(self, name):
+        try:
+            return self.cluster.open_bucket(name)
+        except Exception:
+            return self.cluster.bucket(name)
+
+    def append_list(self, key, value):
+        try:
+            self.bucket.list_append(key, value, create=True)
+        except Exception:
+            self.bucket.default_collection().list_append(key, value, create=True)
+
+    def store_results(self, message_content):
+        build_id = os.getenv("BUILD_NUMBER")
+        if build_id is not None:
+            key = "log_parser_results_" + build_id
+            self.append_list(key, message_content)
 
     def send_email(self, message_sub, message_content, email_recipients):
         SENDMAIL = "/usr/sbin/sendmail"  # sendmail location
@@ -849,6 +888,10 @@ if __name__ == '__main__':
     logger = ast.literal_eval(sys.argv[11])
     should_collect_dumps = sys.argv[12]
     docker_host = sys.argv[13]
+    try:
+        cb_host = sys.argv[14] 
+    except IndexError:
+        cb_host = "172.23.104.178"
     SysTestMon().run(master_node, rest_username, rest_password, ssh_username, ssh_password,
                      cbcollect_on_high_mem_cpu_usage, print_all_logs, email_recipients, state_file_dir, run_infinite,
-                     logger, should_collect_dumps, docker_host)
+                     logger, should_collect_dumps, docker_host, cb_host)
