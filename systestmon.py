@@ -102,7 +102,7 @@ class SysTestMon():
             "logfiles": "projector.log*",
             "services": "kv",
             #"keywords": ["panic", "Error parsing XATTR", "fata"],
-            "keywords": ["panic", "Error parsing XATTR", "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\["],
+            "keywords": ["panic", "Error parsing XATTR", "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\[", "seq order violation"],
             "ignore_keywords": None,
             "check_stats_api": False,
             "port": "9999",
