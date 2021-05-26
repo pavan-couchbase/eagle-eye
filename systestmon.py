@@ -714,7 +714,6 @@ class SysTestMon():
         should_cbcollect = False
         collection_timestamp = time.time()
         collection_timestamp = datetime.fromtimestamp(collection_timestamp).strftime('%Y-%m-%dT%H:%M:%S')
-        collection_timestamp = str(collection_timestamp).replace(" ", "_")
         path = os.getcwd()
         file = "query_active_requests_{0}.txt".format(collection_timestamp)
         command = "curl http://{0}:{1}/query/service -u {2}:{3} -d 'statement=select * from system:active_requests'".format(
@@ -728,7 +727,9 @@ class SysTestMon():
             # If there are results store the results in a file
             if results['metrics']['resultCount'] > 1000:
                 self.logger.info(
-                    "There are more than 1000 queries running right now, this should not be the case. Storing active_requests for further review")
+                    "There are more than 1000 queries running at time {0}, this should not be the case. Storing active_requests for further review".format(collection_timestamp))
+                message_content = message_content + '\n\n' + nodes[0] + " : " + str(component["component"])
+                message_content = message_content + '\n\n' + "There are more than 1000 queries running at time {0}, this should not be the case. Storing active_requests for further review".format(collection_timestamp) + "\n"
                 with open(os.path.join(path, file), 'w') as fp:
                     json.dump(results, fp, indent=4)
                     fp.close()
