@@ -504,7 +504,7 @@ class SysTestMon():
             if should_cbcollect:
                 self.send_email(message_sub, message_content, email_recipients)
                 try:
-                    self.store_results(message_content)
+                    self.store_results(message_sub, message_content)
                 except Exception:
                     pass
             iter_count = iter_count + 1
@@ -569,11 +569,11 @@ class SysTestMon():
         except Exception:
             self.bucket.default_collection().list_append(key, value, create=True)
 
-    def store_results(self, message_content):
+    def store_results(self, message_sub, message_content):
         build_id = os.getenv("BUILD_NUMBER")
         if build_id is not None:
             key = "log_parser_results_" + build_id
-            self.append_list(key, message_content)
+            self.append_list(key, message_sub + "\n" + message_content)
 
     def send_email(self, message_sub, message_content, email_recipients):
         SENDMAIL = "/usr/sbin/sendmail"  # sendmail location
