@@ -187,6 +187,8 @@ class SysTestMon():
         else:
             self.logger = logger
 
+        self.wait_for_cluster_init(master_node)
+
         try:
             self.cluster = self.get_cluster(cb_host)
             self.bucket = self.get_bucket("system_test_dashboard")
@@ -818,6 +820,20 @@ class SysTestMon():
                 if service in node["services"]:
                     nodelist.append(node["hostname"])
         return nodelist
+
+    def wait_for_cluster_init(self, master_node):
+        cluster_url = "http://" + master_node + ":8091/pools/default"
+        while True:
+            self.logger.info("Waiting for cluster {} init".format(master_node))
+            try:
+                status, content, _ = self._http_request(cluster_url)
+                if status:
+                    response = json.loads(content)
+                    if all(lambda node: node["clusterMembership"] == "active", response["nodes"]):
+                        return
+            except Exception:
+                pass
+            time.sleep(10)
 
     def execute_command(self, command, hostname, ssh_username, ssh_password):
         ssh = paramiko.SSHClient()
