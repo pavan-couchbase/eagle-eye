@@ -295,30 +295,32 @@ class SysTestMon():
 
                 # Check if all n1ql nodes are healthy
                 if component["component"] == "query":
-                    # Check to make sure all nodes are healthy
-                    self.logger.info("Checking if all query nodes are healthy")
-                    should_collect, message = self.check_nodes_healthy(nodes=nodes, component=component, rest_username=rest_username, rest_password=rest_password, ssh_username=ssh_username, ssh_password=ssh_password)
-                    if should_collect:
-                        should_cbcollect = True
-                    if not message == '':
-                        message_content = message_content + '\n\n' + node + " : " + str(component["component"])
-                        message_content = message_content + '\n\n' + message + "\n"
-                    # Check system:completed_requests for errors
-                    self.logger.info("Checking system:completed requests for errors")
-                    should_collect, message = self.check_completed_requests(nodes=nodes, component=component, rest_username=rest_username, rest_password=rest_password, ssh_username=ssh_username, ssh_password=ssh_password)
-                    if should_collect:
-                        should_cbcollect = True
-                    if not message == '':
-                        message_content = message_content + '\n\n' + node + " : " + str(component["component"])
-                        message_content = message_content + '\n\n' + message + "\n"
-                    # Check active_requests to make sure that are no more than 1k active requests at a single time
-                    self.logger.info("Checking system:active requests for too many requests")
-                    should_collect, message = self.check_active_requests(nodes=nodes, component=component, rest_username=rest_username, rest_password=rest_password, ssh_username=ssh_username, ssh_password=ssh_password)
-                    if should_collect:
-                        should_cbcollect = True
-                    if not message == '':
-                        message_content = message_content + '\n\n' + node + " : " + str(component["component"])
-                        message_content = message_content + '\n\n' + message + "\n"
+                    n1ql_nodes = self.find_nodes_with_service(node_map,"n1ql")
+                    if n1ql_nodes:
+                        # Check to make sure all nodes are healthy
+                        self.logger.info("Checking if all query nodes are healthy")
+                        should_collect, message = self.check_nodes_healthy(nodes=nodes, component=component, rest_username=rest_username, rest_password=rest_password, ssh_username=ssh_username, ssh_password=ssh_password)
+                        if should_collect:
+                            should_cbcollect = True
+                        if not message == '':
+                            message_content = message_content + '\n\n' + node + " : " + str(component["component"])
+                            message_content = message_content + '\n\n' + message + "\n"
+                        # Check system:completed_requests for errors
+                        self.logger.info("Checking system:completed requests for errors")
+                        should_collect, message = self.check_completed_requests(nodes=nodes, component=component, rest_username=rest_username, rest_password=rest_password, ssh_username=ssh_username, ssh_password=ssh_password)
+                        if should_collect:
+                            should_cbcollect = True
+                        if not message == '':
+                            message_content = message_content + '\n\n' + node + " : " + str(component["component"])
+                            message_content = message_content + '\n\n' + message + "\n"
+                        # Check active_requests to make sure that are no more than 1k active requests at a single time
+                        self.logger.info("Checking system:active requests for too many requests")
+                        should_collect, message = self.check_active_requests(nodes=nodes, component=component, rest_username=rest_username, rest_password=rest_password, ssh_username=ssh_username, ssh_password=ssh_password)
+                        if should_collect:
+                            should_cbcollect = True
+                        if not message == '':
+                            message_content = message_content + '\n\n' + node + " : " + str(component["component"])
+                            message_content = message_content + '\n\n' + message + "\n"
 
             # Check for health of all nodes
             for node in node_map:
