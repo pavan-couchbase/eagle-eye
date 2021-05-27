@@ -829,7 +829,7 @@ class SysTestMon():
                 status, content, _ = self._http_request(cluster_url)
                 if status:
                     response = json.loads(content)
-                    if all(lambda node: node["clusterMembership"] == "active", response["nodes"]):
+                    if all([node["clusterMembership"] == "active" for node in response["nodes"]]):
                         return
             except Exception:
                 pass
