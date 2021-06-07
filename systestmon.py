@@ -683,67 +683,109 @@ class SysTestMon():
             # Convert the output to a json dict that we can parse
             results = self.convert_output_to_json(output)
             if results['metrics']['resultCount'] > 0:
-                self.logger.info("Errors found: {0}".format(results['results']))
                 for result in results['results']:
                     if 'message' in result:
-                        self.logger.info(
-                            "Number of occurences of message '{0}':{1}".format(result['message'], result['errorCount']))
-                        # Look for an example of each error message, and print it out timestamped
-                        command = "curl http://{0}:{1}/query/service -u {2}:{3} -d 'statement=select * from system:completed_requests where errors[0].message = \"{4}\" limit 1'".format(
-                            nodes[0], component["port"], rest_username, rest_password, result['message'])
-                        self.logger.info("Running curl: {0}".format(command))
+                        # Filter out known errors
+                        # Some errors can be filtered out based on errors[0].message, add those error messages here
+                        if "Timeout" in result['message'] and "exceeded" in result["message"]:
+                            self.logger.info("Error message {0} is a known error, we will skip it and remove it from completed_requests".format(result['message']))
+                            command = "curl http://{0}:{1}/query/service -u {2}:{3} -d 'statement=delete from system:completed_requests where errors[0].message = \"{4}\"'".format(
+                                nodes[0], component["port"], rest_username, rest_password, result['message'])
+                            self.logger.info("Running curl: {0}".format(command))
+                            occurences, output, std_err = self.execute_command(
+                                command, nodes[0], ssh_username, ssh_password)
+                            results = self.convert_output_to_json(output)
+                        # Some errors need to be checked out further in order to see if they need to be filtered
+                        elif "Commit Transaction statement error" in result['message']:
+                            command = "curl http://{0}:{1}/query/service -u {2}:{3} -d 'statement=select * from system:completed_requests where errors[0].message = \"{4}\"'".format(
+                                nodes[0], component["port"], rest_username, rest_password, result['message'])
+                            self.logger.info("Running curl: {0}".format(command))
+                            occurences, output, std_err = self.execute_command(
+                                command, nodes[0], ssh_username, ssh_password)
+                            # Convert the output to a json dict that we can parse
+                            results = self.convert_output_to_json(output)
+                            # Check the causes field for known errors, if we encounter one, remove them from completed_requests
+                            for result in results['results']:
+                                if "cause" in result['errors'][0]:
+                                    if "deadline expired before WWC" in result['errors'][0]['cause']['cause']['cause']:
+                                        self.logger.info(
+                                            "Error message {0} is a known error, we will skip it and remove it from completed_requests".format(
+                                                result['errors'][0]['cause']['cause']['cause']))
+                                        command = "curl http://{0}:{1}/query/service -u {2}:{3} -d 'statement=delete from system:completed_requests where errors[0].cause.cause.cause = \"{4}\"'".format(
+                                            nodes[0], component["port"], rest_username, rest_password,
+                                            result['errors'][0]['cause']['cause']['cause'])
+                                        self.logger.info("Running curl: {0}".format(command))
+                                        occurences, output, std_err = self.execute_command(
+                                            command, nodes[0], ssh_username, ssh_password)
+                                    #add elifs here to mimic the above to filter more known causes of error messages
+                command = "curl http://{0}:{1}/query/service -u {2}:{3} -d 'statement=select count(errors[0].message) as errorCount, errors[0].message from system:completed_requests where errorCount > 0 group by errors[0].message'".format(
+                    nodes[0], component["port"], rest_username, rest_password)
+                occurences, output, std_err = self.execute_command(
+                    command, nodes[0], ssh_username, ssh_password)
+                # Convert the output to a json dict that we can parse
+                results = self.convert_output_to_json(output)
+                if results['metrics']['resultCount'] > 0:
+                    self.logger.info("Errors found: {0}".format(results['results']))
+                    for result in results['results']:
+                        if 'message' in result:
+                            self.logger.info(
+                                "Number of occurences of message '{0}':{1}".format(result['message'], result['errorCount']))
+                            # Look for an example of each error message, and print it out timestamped
+                            command = "curl http://{0}:{1}/query/service -u {2}:{3} -d 'statement=select * from system:completed_requests where errors[0].message = \"{4}\" limit 1'".format(
+                                nodes[0], component["port"], rest_username, rest_password, result['message'])
+                            self.logger.info("Running curl: {0}".format(command))
+                            occurences, output, std_err = self.execute_command(
+                                command, nodes[0], ssh_username, ssh_password)
+                            # Convert the output to a json dict that we can parse
+                            results = self.convert_output_to_json(output)
+                            self.logger.info(
+                                "Sample result for error message '{0}' at time {1}: {2}".format(result['message'],
+                                                                                                results['results'][0][
+                                                                                                    'completed_requests'][
+                                                                                                    'requestTime'],
+                                                                                                results['results']))
+                            # Update message_content to show errors were found
+                            message_content = message_content + '\n\n' + nodes[0] + " : " + str(component["component"])
+                            message_content = message_content + '\n\n' + "Sample result for error message '{0}' at time {1}: {2}".format(result['message'],
+                                                                                                results['results'][0][
+                                                                                                    'completed_requests'][
+                                                                                                    'requestTime'],
+                                                                                                results['results']) + "\n"
+                    # Get the entire completed_requests errors and dump them to a file
+                    command = "curl http://{0}:{1}/query/service -u {2}:{3} -d 'statement=select * from system:completed_requests where errorCount > 0 order by requestTime desc'".format(
+                        nodes[0], component["port"], rest_username, rest_password)
+                    self.logger.info("Running curl: {0}".format(command))
+                    try:
                         occurences, output, std_err = self.execute_command(
                             command, nodes[0], ssh_username, ssh_password)
                         # Convert the output to a json dict that we can parse
                         results = self.convert_output_to_json(output)
-                        self.logger.info(
-                            "Sample result for error message '{0}' at time {1}: {2}".format(result['message'],
-                                                                                            results['results'][0][
-                                                                                                'completed_requests'][
-                                                                                                'requestTime'],
-                                                                                            results['results']))
-                        # Update message_content to show errors were found
-                        message_content = message_content + '\n\n' + nodes[0] + " : " + str(component["component"])
-                        message_content = message_content + '\n\n' + "Sample result for error message '{0}' at time {1}: {2}".format(result['message'],
-                                                                                            results['results'][0][
-                                                                                                'completed_requests'][
-                                                                                                'requestTime'],
-                                                                                            results['results']) + "\n"
-                # Get the entire completed_requests errors and dump them to a file
-                command = "curl http://{0}:{1}/query/service -u {2}:{3} -d 'statement=select * from system:completed_requests where errorCount > 0 order by requestTime desc'".format(
-                    nodes[0], component["port"], rest_username, rest_password)
-                self.logger.info("Running curl: {0}".format(command))
-                try:
-                    occurences, output, std_err = self.execute_command(
-                        command, nodes[0], ssh_username, ssh_password)
-                    # Convert the output to a json dict that we can parse
-                    results = self.convert_output_to_json(output)
-                    # If there are results store the results in a file
-                    if results['metrics']['resultCount'] > 0:
-                        self.logger.info("We found errors in completed requests, storing errors to a file")
-                        with open(os.path.join(path, file), 'w') as fp:
-                            json.dump(results, fp, indent=4)
-                            fp.close()
-                        zipname = path + "/query_completed_requests_errors_{0}.zip".format(
-                            collection_timestamp)
-                        zipfile.ZipFile(zipname, mode='w').write(file)
-                        os.remove(file)
-                        file = file.replace(".txt", ".zip")
-                        self.logger.info(
-                            "Errors from completed_requests stored at {0}/{1}".format(path, file))
-                        self.logger.info(
-                            "After storing competed_requests_errors we will delete them from the server")
+                        # If there are results store the results in a file
+                        if results['metrics']['resultCount'] > 0:
+                            self.logger.info("We found errors in completed requests, storing errors to a file")
+                            with open(os.path.join(path, file), 'w') as fp:
+                                json.dump(results, fp, indent=4)
+                                fp.close()
+                            zipname = path + "/query_completed_requests_errors_{0}.zip".format(
+                                collection_timestamp)
+                            zipfile.ZipFile(zipname, mode='w').write(file)
+                            os.remove(file)
+                            file = file.replace(".txt", ".zip")
+                            self.logger.info(
+                                "Errors from completed_requests stored at {0}/{1}".format(path, file))
+                            self.logger.info(
+                                "After storing competed_requests_errors we will delete them from the server")
 
-                        command = "curl http://{0}:{1}/query/service -u {2}:{3} -d 'statement=delete from system:completed_requests where errorCount > 0'".format(
-                            nodes[0], component["port"], rest_username, rest_password)
-                        self.logger.info("Running curl: {0}".format(command))
-                        occurences, output, std_err = self.execute_command(
-                            command, nodes[0], ssh_username, ssh_password)
-                        should_cbcollect = True
-                except Exception as e:
-                    self.logger.info("Found an exception {0}".format(e))
-                    message_content = message_content + '\n\n' + nodes[0] + " : " + str(component["component"])
-                    message_content = message_content + '\n\n' + "Found an exception {0}".format(e) + "\n"
+                            command = "curl http://{0}:{1}/query/service -u {2}:{3} -d 'statement=delete from system:completed_requests where errorCount > 0'".format(
+                                nodes[0], component["port"], rest_username, rest_password)
+                            self.logger.info("Running curl: {0}".format(command))
+                            occurences, output, std_err = self.execute_command(
+                                command, nodes[0], ssh_username, ssh_password)
+                            should_cbcollect = True
+                    except Exception as e:
+                        self.logger.info("Found an exception {0}".format(e))
+                        message_content = message_content + '\n\n' + nodes[0] + " : " + str(component["component"])
+                        message_content = message_content + '\n\n' + "Found an exception {0}".format(e) + "\n"
 
         except Exception as e:
             self.logger.info("Found an exception {0}".format(e))
