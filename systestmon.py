@@ -688,36 +688,48 @@ class SysTestMon():
                         # Filter out known errors
                         # Some errors can be filtered out based on errors[0].message, add those error messages here
                         if "Timeout" in result['message'] and "exceeded" in result["message"]:
-                            self.logger.info("Error message {0} is a known error, we will skip it and remove it from completed_requests".format(result['message']))
-                            command = "curl http://{0}:{1}/query/service -u {2}:{3} -d 'statement=delete from system:completed_requests where errors[0].message = \"{4}\"'".format(
-                                nodes[0], component["port"], rest_username, rest_password, result['message'])
-                            self.logger.info("Running curl: {0}".format(command))
-                            occurences, output, std_err = self.execute_command(
-                                command, nodes[0], ssh_username, ssh_password)
-                            results = self.convert_output_to_json(output)
+                            try:
+                                self.logger.info("Error message {0} is a known error, we will skip it and remove it from completed_requests".format(result['message']))
+                                command = "curl http://{0}:{1}/query/service -u {2}:{3} -d 'statement=delete from system:completed_requests where errors[0].message = \"{4}\"'".format(
+                                    nodes[0], component["port"], rest_username, rest_password, result['message'])
+                                self.logger.info("Running curl: {0}".format(command))
+                                occurences, output, std_err = self.execute_command(
+                                    command, nodes[0], ssh_username, ssh_password)
+                                results = self.convert_output_to_json(output)
+                            except Exception as e:
+                                if "errors" in str(e):
+                                    continue
+                                else:
+                                    self.loger.info("There was an exception {0}".format(str(e)))
                         # Some errors need to be checked out further in order to see if they need to be filtered
                         elif "Commit Transaction statement error" in result['message']:
-                            command = "curl http://{0}:{1}/query/service -u {2}:{3} -d 'statement=select * from system:completed_requests where errors[0].message = \"{4}\"'".format(
-                                nodes[0], component["port"], rest_username, rest_password, result['message'])
-                            self.logger.info("Running curl: {0}".format(command))
-                            occurences, output, std_err = self.execute_command(
-                                command, nodes[0], ssh_username, ssh_password)
-                            # Convert the output to a json dict that we can parse
-                            results = self.convert_output_to_json(output)
-                            # Check the causes field for known errors, if we encounter one, remove them from completed_requests
-                            for result in results['results']:
-                                if "cause" in result['errors'][0]:
-                                    if "deadline expired before WWC" in result['errors'][0]['cause']['cause']['cause']:
-                                        self.logger.info(
-                                            "Error message {0} is a known error, we will skip it and remove it from completed_requests".format(
-                                                result['errors'][0]['cause']['cause']['cause']))
-                                        command = "curl http://{0}:{1}/query/service -u {2}:{3} -d 'statement=delete from system:completed_requests where errors[0].cause.cause.cause = \"{4}\"'".format(
-                                            nodes[0], component["port"], rest_username, rest_password,
-                                            result['errors'][0]['cause']['cause']['cause'])
-                                        self.logger.info("Running curl: {0}".format(command))
-                                        occurences, output, std_err = self.execute_command(
-                                            command, nodes[0], ssh_username, ssh_password)
-                                    #add elifs here to mimic the above to filter more known causes of error messages
+                            try:
+                                command = "curl http://{0}:{1}/query/service -u {2}:{3} -d 'statement=select * from system:completed_requests where errors[0].message = \"{4}\"'".format(
+                                    nodes[0], component["port"], rest_username, rest_password, result['message'])
+                                self.logger.info("Running curl: {0}".format(command))
+                                occurences, output, std_err = self.execute_command(
+                                    command, nodes[0], ssh_username, ssh_password)
+                                # Convert the output to a json dict that we can parse
+                                results = self.convert_output_to_json(output)
+                                # Check the causes field for known errors, if we encounter one, remove them from completed_requests
+                                for result in results['results']:
+                                    if "cause" in result['errors'][0]:
+                                        if "deadline expired before WWC" in result['errors'][0]['cause']['cause']['cause']:
+                                            self.logger.info(
+                                                "Error message {0} is a known error, we will skip it and remove it from completed_requests".format(
+                                                    result['errors'][0]['cause']['cause']['cause']))
+                                            command = "curl http://{0}:{1}/query/service -u {2}:{3} -d 'statement=delete from system:completed_requests where errors[0].cause.cause.cause = \"{4}\"'".format(
+                                                nodes[0], component["port"], rest_username, rest_password,
+                                                result['errors'][0]['cause']['cause']['cause'])
+                                            self.logger.info("Running curl: {0}".format(command))
+                                            occurences, output, std_err = self.execute_command(
+                                                command, nodes[0], ssh_username, ssh_password)
+                            except Exception as e:
+                                if "errors" in str(e):
+                                    continue
+                                else:
+                                    self.loger.info("There was an exception {0}".format(str(e)))
+                            #add elifs here to mimic the above to filter more known causes of error messages
                 command = "curl http://{0}:{1}/query/service -u {2}:{3} -d 'statement=select count(errors[0].message) as errorCount, errors[0].message from system:completed_requests where errorCount > 0 group by errors[0].message'".format(
                     nodes[0], component["port"], rest_username, rest_password)
                 occurences, output, std_err = self.execute_command(
