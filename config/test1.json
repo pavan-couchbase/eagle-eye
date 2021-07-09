@@ -1,0 +1,10 @@
+{
+  "cpu_collection": {
+    "loop_interval": 5,
+    "cpu_threshold": 90
+  },
+  "mem_collection": {
+    "loop_interval": 5,
+    "mem_threshold": 90
+  }
+}

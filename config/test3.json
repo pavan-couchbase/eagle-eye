@@ -1,0 +1,90 @@
+{
+  "neg_stat_check": {
+    "loop_interval": 120,
+    "config": [
+      {
+            "component": "memcached",
+            "services": "all",
+            "check_stats_api": false,
+            "collect_dumps": false
+        },
+        {
+            "component": "memcached",
+            "services": "all",
+            "check_stats_api": false,
+            "collect_dumps": false
+        },
+        {
+            "component": "index",
+            "services": "index",
+            "check_stats_api": true,
+            "stats_api_list": ["stats/storage", "stats"],
+            "port": "9102",
+            "collect_dumps": true
+        },
+        {
+            "component": "analytics",
+            "services": "cbas",
+            "check_stats_api": false,
+            "collect_dumps": false
+        },
+        {
+            "component": "eventing",
+            "services": "eventing",
+            "check_stats_api": false,
+            "collect_dumps": false
+        },
+        {
+            "component": "fts",
+            "services": "fts",
+            "check_stats_api": true,
+            "stats_api_list": ["api/stats"],
+            "port": "8094",
+            "collect_dumps": true
+        },
+        {
+            "component": "xdcr",
+            "services": "kv",
+            "check_stats_api": false,
+            "collect_dumps": false
+        },
+        {
+            "component": "projector",
+            "services": "kv",
+            "check_stats_api": false,
+            "port": "9999",
+            "collect_dumps": true
+        },
+        {
+            "component": "rebalance",
+            "services": "all",
+            "check_stats_api": false,
+            "collect_dumps": false
+        },
+        {
+            "component": "crash",
+            "services": "all",
+            "check_stats_api": false,
+            "collect_dumps": false
+        },
+        {
+            "component": "query",
+            "services": "n1ql",
+            "check_stats_api": false,
+            "collect_dumps": true,
+            "port": "8093"
+        },
+        {
+            "component": "backup",
+            "services": "backup",
+            "check_stats_api": false,
+            "collect_dumps": true,
+            "port": "8097"
+        }
+    ]
+  },
+  "failed_query_check": {
+    "loop_interval": 900,
+    "port": "8093"
+  }
+}

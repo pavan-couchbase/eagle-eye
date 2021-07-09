@@ -1,0 +1,237 @@
+{
+  "log_parser": {
+    "loop_interval": 3600,
+    "config": [
+      {
+        "component": "memcached",
+        "logfiles": "babysitter.log*",
+        "services": "all",
+        "keywords": [
+          "exception occurred in runloop",
+          "failover exited with reason",
+          "Basic\\s[a-zA-Z]\\{10,\\}",
+          "Menelaus-Auth-User:\\["
+        ],
+        "ignore_keywords": null,
+        "check_stats_api": false,
+        "collect_dumps": false
+      },
+      {
+        "component": "memcached",
+        "logfiles": "memcached.log.*",
+        "services": "all",
+        "keywords": [
+          "CRITICAL",
+          "Basic\\s[a-zA-Z]\\{10,\\}",
+          "Menelaus-Auth-User:\\[",
+          "exception occurred in runloop"
+        ],
+        "ignore_keywords": null,
+        "check_stats_api": false,
+        "collect_dumps": false
+      },
+      {
+        "component": "index",
+        "logfiles": "indexer.log*",
+        "services": "index",
+        "keywords": [
+          "panic",
+          "fatal",
+          "Error parsing XATTR",
+          "zero",
+          "protobuf.Error",
+          "Encounter planner error",
+          "corruption",
+          "processFlushAbort",
+          "Basic\\s[a-zA-Z]\\{10,\\}",
+          "Menelaus-Auth-User:\\[",
+          "Failed to initialize metadata provider",
+          "Waiting for Node Alloc",
+          "found missing page",
+          "invalid last page",
+          "Storage corrupted and unrecoverable",
+          "ensureMonotonicTs  Align seqno smaller than lastFlushTs",
+          "TS falls out of snapshot boundary"
+        ],
+        "ignore_keywords": [
+          "fatal remote"
+        ],
+        "check_stats_api": true,
+        "stats_api_list": [
+          "stats/storage",
+          "stats"
+        ],
+        "port": "9102",
+        "collect_dumps": true
+      },
+      {
+        "component": "analytics",
+        "logfiles": "analytics_error*",
+        "services": "cbas",
+        "keywords": [
+          "fata",
+          "Analytics Service is temporarily unavailable",
+          "Failed during startup task",
+          "HYR0",
+          "ASX",
+          "IllegalStateException",
+          "Basic\\s[a-zA-Z]\\{10,\\}",
+          "Menelaus-Auth-User:\\[",
+          "panic",
+          "LEAK"
+        ],
+        "ignore_keywords": [
+          "HYR0010",
+          "HYR0115",
+          "ASX3110",
+          "HYR0114"
+        ],
+        "check_stats_api": false,
+        "collect_dumps": false
+      },
+      {
+        "component": "eventing",
+        "logfiles": "eventing.log*",
+        "services": "eventing",
+        "keywords": [
+          "panic",
+          "fatal",
+          "Basic\\s[a-zA-Z]\\{10,\\}",
+          "Menelaus-Auth-User:\\["
+        ],
+        "ignore_keywords": null,
+        "check_stats_api": false,
+        "collect_dumps": false
+      },
+      {
+        "component": "fts",
+        "logfiles": "fts.log*",
+        "services": "fts",
+        "keywords": [
+          "panic",
+          "fatal",
+          "authPassword",
+          "\\[ERRO\\]",
+          "Basic\\s[a-zA-Z]\\{10,\\}",
+          "Menelaus-Auth-User:\\["
+        ],
+        "ignore_keywords": [
+          "Fatal:false",
+          "use of closed network connection",
+          "Reschedule failed, failing request"
+        ],
+        "check_stats_api": true,
+        "stats_api_list": [
+          "api/stats"
+        ],
+        "port": "8094",
+        "collect_dumps": true
+      },
+      {
+        "component": "xdcr",
+        "logfiles": "*xdcr*.log*",
+        "services": "kv",
+        "keywords": [
+          "Failed on calling",
+          "panic",
+          "fatal",
+          "Basic\\s[a-zA-Z]\\{10,\\}",
+          "Menelaus-Auth-User:\\["
+        ],
+        "ignore_keywords": null,
+        "check_stats_api": false,
+        "collect_dumps": false
+      },
+      {
+        "component": "projector",
+        "logfiles": "projector.log*",
+        "services": "kv",
+        "keywords": [
+          "panic",
+          "Error parsing XATTR",
+          "Basic\\s[a-zA-Z]\\{10,\\}",
+          "Menelaus-Auth-User:\\[",
+          "seq order violation"
+        ],
+        "ignore_keywords": null,
+        "check_stats_api": false,
+        "port": "9999",
+        "collect_dumps": true
+      },
+      {
+        "component": "rebalance",
+        "logfiles": "error.log*",
+        "services": "all",
+        "keywords": [
+          "rebalance exited",
+          "failover exited with reason",
+          "Basic\\s[a-zA-Z]\\{10,\\}",
+          "Menelaus-Auth-User:\\[",
+          "Join completion call failed"
+        ],
+        "ignore_keywords": null,
+        "check_stats_api": false,
+        "collect_dumps": false
+      },
+      {
+        "component": "crash",
+        "logfiles": "info.log*",
+        "services": "all",
+        "keywords": [
+          "exited with status",
+          "failover exited with reason",
+          "Basic\\s[a-zA-Z]\\{10,\\}",
+          "Menelaus-Auth-User:\\["
+        ],
+        "ignore_keywords": [
+          "exited with status 0"
+        ],
+        "check_stats_api": false,
+        "collect_dumps": false
+      },
+      {
+        "component": "query",
+        "logfiles": "query.log*",
+        "services": "n1ql",
+        "keywords": [
+          "panic",
+          "fatal",
+          "Encounter planner error",
+          "Basic\\s[a-zA-Z]\\{10,\\}",
+          "Menelaus-Auth-User:\\["
+        ],
+        "ignore_keywords": [
+          "not available"
+        ],
+        "check_stats_api": false,
+        "collect_dumps": true,
+        "port": "8093"
+      },
+      {
+        "component": "backup",
+        "logfiles": "backup_service.log*",
+        "services": "backup",
+        "keywords": [
+          "panic",
+          "fatal",
+          "warn",
+          "Failed Task",
+          "Basic\\s[a-zA-Z]\\{10,\\}",
+          "Menelaus-Auth-User:\\["
+        ],
+        "ignore_keywords": null,
+        "check_stats_api": false,
+        "collect_dumps": true,
+        "port": "8097"
+      }
+    ]
+  },
+  "cpu_collection": {
+    "loop_interval": 5,
+    "cpu_threshold": 90
+  },
+  "mem_collection": {
+    "loop_interval": 5,
+    "mem_threshold": 90
+  }
+}
