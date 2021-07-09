@@ -40,11 +40,12 @@ class EagleEye:
         self.print_all_logs = print_all_logs
 
         # create a dir for the job
-        os.mkdir(self.job_id)
+        # os.mkdir(self.job_id)
+        os.makedirs("./job_logs/{0}".format(self.job_id))
 
         # better title for this
-        self.logger = logger_init(job_id=self.job_id, logger_dir=self.job_id, logger_name="-task_manager")
-        self.alert_logger = logger_init(job_id=self.job_id, logger_dir=self.job_id, logger_name="-alert_thread")
+        self.logger = logger_init(job_id=self.job_id, logger_dir="./job_logs/{0}".format(self.job_id), logger_name="-task_manager")
+        self.alert_logger = logger_init(job_id=self.job_id, logger_dir="./job_logs/{0}".format(self.job_id), logger_name="-alert_thread")
 
         self.wait_for_cluster_init(master_node, self.logger)
 
@@ -390,7 +391,7 @@ class EagleEye:
         self.system_task_num_name_map[task_num] = sys_name
 
         # make dir for the task
-        task_dir = "./{0}/{1}".format(self.job_id, sys_name)
+        task_dir = "./job_logs/{0}/{1}".format(self.job_id, sys_name)
         os.makedirs(task_dir)
 
         logger = logger_init(job_id=self.job_id, logger_dir=task_dir, logger_name="-{0}".format(sys_name))
