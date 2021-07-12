@@ -1,5 +1,5 @@
 from flask_restful import Resource, reqparse
-from util import print_queue
+from server.util.util import id_print_queue
 
 
 class Status(Resource):
@@ -22,4 +22,4 @@ class Status(Resource):
             if k.split(":_:")[0] == args['id']:
                 running[k.split(":_:")[1]] = str(v)
 
-        return {"Running": running, "Waiting": print_queue(self.initq)}, 200
+        return {"Running": running, "Waiting": id_print_queue(self.initq, args['id'])}, 200

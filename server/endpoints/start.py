@@ -1,10 +1,11 @@
-from flask_restful import Api, Resource, reqparse
+from flask_restful import Resource, reqparse
 import time
 import json
 import uuid
-from task import Task
-from task_manager import TaskManager
-from util import get_parameters, print_queue
+from server.util.task import Task
+from server.util.task_manager import TaskManager
+from server.util.util import get_parameters, print_queue
+from server.constants.defaults import Default
 
 
 class Start(Resource):
@@ -49,7 +50,7 @@ class Start(Resource):
                 return {"Error": "Issue loading config",
                         "Msg": str(e)}, 400
         else:
-            run_configuration = json.load(open('./config/default.json'))
+            run_configuration = json.load(open('../config/default.json'))
 
         # generate unique id
         job_id = uuid.uuid1()
@@ -71,15 +72,15 @@ class Start(Resource):
         # if this is a new id, create a new task_manager and store it in the task managers dictionary
         if job_id not in self.task_managers:
             if args['restusername'] is None and args['restpassword'] is None:
-                rest_username = 'Administrator'
-                rest_password = 'password'
+                rest_username = Default.rest_username
+                rest_password = Default.rest_password
             else:
                 rest_username = args['restusername']
                 rest_password = args['restpassword']
 
             if args['sshusername'] is None and args['sshpassword'] is None:
-                ssh_username = 'root'
-                ssh_password = 'couchbase'
+                ssh_username = Default.ssh_username
+                ssh_password = Default.ssh_password
             else:
                 ssh_username = args['sshusername']
                 ssh_password = args['sshpassword']
@@ -103,7 +104,7 @@ class Start(Resource):
                 except TypeError as e:
                     return {"Msg": "Alert Frequency must be an int", "Error": e}, 400
             else:
-                alert_freq = 3600
+                alert_freq = Default.alert_interval
 
             # calculate how many threads we can allocate
             num_tasks = len(run_configuration)

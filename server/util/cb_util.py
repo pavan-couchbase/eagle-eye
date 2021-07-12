@@ -1,7 +1,7 @@
-from couchbase.cluster import Cluster, ClusterOptions, QueryOptions
+from couchbase.cluster import Cluster, ClusterOptions
 from couchbase_core.cluster import PasswordAuthenticator
 from couchbase.exceptions import DocumentExistsException
-
+from server.constants.queries import Queries
 
 class CBConnection:
     def __init__(self, username, password, host):
@@ -20,10 +20,15 @@ class CBConnection:
         except DocumentExistsException:
             return False
 
-    def get_data(self, id, dc_name=None):
-        query = "SELECT VALUE e FROM `eagle-eye` e WHERE e.id = '{0}'".format(id)
+    def get_data(self, id, iter_num=None, dc_name=None):
+        # logic to run the correct query
+        query = Queries.id_get_data.format(id)
         if dc_name is not None:
-            query += " AND EXISTS {0}".format(dc_name)
+            query = Queries.id_dc_get_data.format(id, dc_name)
+        if iter_num is not None and dc_name is None:
+            query = Queries.id_iter_get_data(id, iter_num)
+        if iter_num is not None and dc_name is not None:
+            query = Queries.id_iter_dc_get_data(id, iter_num, dc_name)
 
         res = self.cb.query(query)
         result_arr = [x for x in res]

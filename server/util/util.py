@@ -1,5 +1,4 @@
 import logging
-import sys
 from datetime import datetime
 
 
@@ -12,6 +11,20 @@ def print_queue(q):
             str += task.__str__()
         else:
             str += task.__str__() + ","
+        i += 1
+    str += "]"
+    return str
+
+def id_print_queue(q, id):
+    str = "["
+    num_tasks = q.qsize()
+    i = 0
+    for task in q.queue:
+        if task.job_id == id:
+            if i == num_tasks - 1:
+                str += task.__str__()
+            else:
+                str += task.__str__() + ","
         i += 1
     str += "]"
     return str

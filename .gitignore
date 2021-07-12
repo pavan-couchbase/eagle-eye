@@ -2,6 +2,7 @@ venv
 venv/**
 
 *.log
+*.state
 
 .DS_Store
 .idea

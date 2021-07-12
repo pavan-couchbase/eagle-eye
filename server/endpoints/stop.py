@@ -1,5 +1,4 @@
 from flask_restful import Api, Resource, reqparse
-import shutil
 
 """
 The code that handles the /stop API end point
@@ -8,7 +7,7 @@ The code that handles the /stop API end point
 
 class Stop(Resource):
     def __init__(self, initq, running_map, task_managers, waiting_jobids, num_threads):
-        # have access to the app init queue, running threads, and active task managers
+        # have access to the server init queue, running threads, and active task managers
         self.initq = initq
         self.running_map = running_map
         self.task_managers = task_managers
@@ -40,7 +39,8 @@ class Stop(Resource):
                 for k in to_delete:
                     del self.running_map[k]
 
-                shutil.rmtree("./" + args['id'])
+                # not removing directory for now, see what users like
+                # shutil.rmtree("./" + args['id'])
 
                 # if there are tasks waiting, start them
                 started_jobs = []

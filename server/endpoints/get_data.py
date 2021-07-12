@@ -15,10 +15,11 @@ class GetData(Resource):
         parser.add_argument('id', required=True)
 
         # optional
+        parser.add_argument('iter-num', required=False)
         parser.add_argument('data-collector-name', required=False)
 
         args = parser.parse_args()
 
-        res = self.cb.get_data(args['id'], args['data-collector-name'])
+        res = self.cb.get_data(args['id'], args['iter-num'], args['data-collector-name'])
 
         return {"data": res}, 200

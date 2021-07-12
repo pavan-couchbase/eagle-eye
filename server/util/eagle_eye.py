@@ -12,7 +12,7 @@ import ast
 from couchbase.cluster import Cluster, PasswordAuthenticator
 from datetime import datetime
 from collections import Mapping, Sequence, Set, deque
-from util import logger_init
+from server.util.util import logger_init
 
 
 class EagleEye:
@@ -61,10 +61,9 @@ class EagleEye:
         self.task_num_name_map = {}
         self.system_task_num_name_map = {}
 
-        self.usages = {}  # only for cpu and mem
         self.messages = {}
         self.prev_messages = {}
-        self.has_changed = True
+        self.has_changed = False
         self.should_cbcollect = False
         self.collected = False
 
@@ -74,21 +73,15 @@ class EagleEye:
     def on_alert(self, alert_iter):
         doc_to_insert = {
             "id": self.job_id,
-            "iter": alert_iter,
+            "iteration": alert_iter,
             "cluster_name": self.cluster_name,
             "build": self.build
         }
 
-        # check if mem and cpu usage were specified
-        for k, v in self.usages.items():
-            doc_to_insert[self.system_task_num_name_map[k]] = v
-            self.usages[k] = []
-
-
         # for each running task, create the message subject line and send the email with the correct message content
         for k, v in self.messages.items():
             # if there is no completed iterations yet, do not alert
-            if v == "":
+            if v == "" or v == []:
                 continue
 
             # add the data to the document that will be inserted
@@ -100,7 +93,10 @@ class EagleEye:
                             logger=self.logger)
 
             # we need to clear the stored results every alert interval
-            self.messages[k] = ""
+            if type(self.messages[k]) is str:
+                self.messages[k] = ""
+            elif type(self.messages[k]) is list:
+                self.messages[k] = []
 
         # see if we need to collect logs
         start_time = time.time()
@@ -122,6 +118,7 @@ class EagleEye:
 
     ######################### TASK FUNCTIONS #########################
     def log_parser(self, master_node, loop_interval, task_num, config):
+        self.messages[task_num] = ""
         task_dir, logger = self._task_init(task_num, "Log Parser", "log_parser")
         # config = json.load(config)
 
@@ -237,16 +234,16 @@ class EagleEye:
                 break
 
     def cpu_collection(self, loop_interval, task_num, cpu_threshold):
+        self.messages[task_num] = []
         task_dir, logger = self._task_init(task_num, "CPU Collection", "cpu_collection")
 
         iter_count = 1
-        message_content = ""
-        self.usages[task_num] = []
 
         while self.running:
             # cpu check and collect
+            usages = []
             for node in self.node_map:
-                self.usages[task_num].append({"node": node['hostname'], "timestamp": str(datetime.now().strftime('%Y-%m-%dT%H:%M:%S')), "usage": node['cpuUsage']})
+                usages.append({"node": node['hostname'], "timestamp": str(datetime.now().strftime('%Y-%m-%dT%H:%M:%S')), "usage": node['cpuUsage']})
                 self.has_changed = True
 
                 if node["cpuUsage"] > cpu_threshold:
@@ -258,29 +255,24 @@ class EagleEye:
                     #    should_cbcollect = True
                 self.check_on_disk_usage(node['hostname'], logger)
 
-            logger.info(
-                "====== {0} iteration number {1} complete. Sleeping for {2} seconds ======".format(
-                    self.task_num_name_map[task_num], iter_count, loop_interval))
-
-            iter_count += 1
-            if not self.running:
+            to_break, iter_count = self._task_sleep(loop_interval=loop_interval, iter_count=iter_count, message_content=usages, task_num=task_num, logger=logger, dc_name=self.task_num_name_map[task_num])
+            if to_break is False:
                 logger.info("Stopping {0}".format(self.task_num_name_map[task_num]))
                 break
 
-            time.sleep(loop_interval)
-
     def mem_collection(self, loop_interval, task_num, mem_threshold):
+        self.messages[task_num] = []
         task_dir, logger = self._task_init(task_num, "Memory Collection", "mem_collection")
 
         iter_count = 1
 
-        self.usages[task_num] = []
+        self.messages[task_num] = []
 
         while self.running:
-
             # cpu check and collect
+            usages = []
             for node in self.node_map:
-                self.usages[task_num].append({"node": node['hostname'], "timestamp": str(datetime.now().strftime('%Y-%m-%dT%H:%M:%S')), "usage": node['memUsage']})
+                usages.append({"node": node['hostname'], "timestamp": str(datetime.now().strftime('%Y-%m-%dT%H:%M:%S')), "usage": node['memUsage']})
                 self.has_changed = True
 
                 if node["memUsage"] > mem_threshold:
@@ -294,14 +286,15 @@ class EagleEye:
                 "====== {0} iteration number {1} complete. Sleeping for {2} seconds ======".format(
                     self.task_num_name_map[task_num], iter_count, loop_interval))
 
-            iter_count += 1
-            if not self.running:
+            to_break, iter_count = self._task_sleep(loop_interval=loop_interval, iter_count=iter_count,
+                                                    message_content=usages, task_num=task_num, logger=logger,
+                                                    dc_name=self.task_num_name_map[task_num])
+            if to_break is False:
                 logger.info("Stopping {0}".format(self.task_num_name_map[task_num]))
                 break
 
-            time.sleep(loop_interval)
-
     def negative_stat_checker(self, loop_interval, task_num, config):
+        self.messages[task_num] = ""
         task_dir, logger = self._task_init(task_num, "Negative Stat Checker", "neg_stat_check")
 
         iter_count = 1
@@ -337,6 +330,7 @@ class EagleEye:
                 break
 
     def failed_query_check(self, loop_interval, task_num, port):
+        self.messages[task_num] = ""
         task_dir, logger = self._task_init(task_num, "Failed Query Check", "failed_query_check")
 
         iter_count = 1
@@ -385,8 +379,6 @@ class EagleEye:
                 break
 
     def _task_init(self, task_num, name, sys_name):
-        if sys_name != "cpu_collection" and sys_name != "mem_collection":
-            self.messages[task_num] = ""
         self.task_num_name_map[task_num] = name
         self.system_task_num_name_map[task_num] = sys_name
 
@@ -404,11 +396,14 @@ class EagleEye:
                 dc_name, iter_count, loop_interval))
 
         # if something has changed, change flag for task manager
-        if message_content != "":
+        if message_content != "" or message_content != []:
             self.has_changed = True
 
         # add the message content from the iteration
-        self.messages[task_num] += message_content
+        if type(message_content) is str:
+            self.messages[task_num] += message_content
+        else:
+            self.messages[task_num].extend(message_content)
 
         iter_count += 1
         if not self.running:
@@ -573,7 +568,7 @@ class EagleEye:
 
     def update_cbinstance(self, doc, logger):
         try:
-            id = doc["id"] + "_" + str(doc["iter"])
+            id = doc["id"] + "_" + str(doc["iteration"])
         except Exception as e:
             print(e)
 
@@ -897,7 +892,7 @@ class EagleEye:
         if not headers:
             headers = self._create_headers()
         end_time = time.time() + timeout
-        logger.info("Executing {0} request for following api {1}".format(method, api))
+        logger.info("Executing {0} request for following endpoints {1}".format(method, api))
         count = 1
         while True:
             try:

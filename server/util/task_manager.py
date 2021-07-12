@@ -1,6 +1,7 @@
 import time
-from eagle_eye import EagleEye
+from .eagle_eye import EagleEye
 from concurrent.futures import ThreadPoolExecutor
+from server.constants.defaults import Default
 
 
 class TaskManager:
@@ -12,12 +13,12 @@ class TaskManager:
                  num_threads,
                  cb_instance,
                  email_list=None,
-                 rest_username="Administrator", rest_password="password",
-                 ssh_username="root", ssh_password="couchbase",
+                 rest_username=Default.rest_username, rest_password=Default.rest_password,
+                 ssh_username=Default.ssh_username, ssh_password=Default.ssh_password,
                  docker_host=None,
-                 cb_host="172.23.104.178",
+                 cb_host=Default.tm_cb_host,
                  print_all_logs=False,
-                 alert_interval=3600):
+                 alert_interval=Default.alert_interval):
 
         self.ee = EagleEye(job_id=job_id,
                            cluster_name=cluster_name,
