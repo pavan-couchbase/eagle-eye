@@ -10,7 +10,7 @@ from endpoints.status import Status
 from util.cb_util import CBConnection
 
 
-num_threads = 15
+num_threads = 150000
 
 
 class App:
@@ -18,7 +18,7 @@ class App:
         self.app = Flask(__name__)
         self.api = Api(self.app)
 
-        logging.basicConfig(filename="./server_logs/server.log", level=logging.INFO, format=f'%(asctime)s %(levelname)s %(name)s %(threadName)s : %(message)s')
+        logging.basicConfig(filename="./server/server_logs/server.log", level=logging.INFO, format=f'%(asctime)s %(levelname)s %(name)s %(threadName)s : %(message)s')
 
         self.initq = queue.Queue()
         self.waiting_jobids = queue.Queue()

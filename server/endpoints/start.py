@@ -4,7 +4,7 @@ import json
 import uuid
 from server.util.task import Task
 from server.util.task_manager import TaskManager
-from server.util.util import get_parameters, print_queue
+from server.util.util import get_parameters, print_queue, check_unique_host
 from server.constants.defaults import Default
 
 
@@ -28,7 +28,6 @@ class Start(Resource):
         # Unique Identifier
         parser.add_argument('host', required=True)
         parser.add_argument('clustername', required=True)
-        parser.add_argument('build', required=True)
 
         # Optional configuration
         parser.add_argument('configfile', required=False)
@@ -42,6 +41,9 @@ class Start(Resource):
 
         args = parser.parse_args()
 
+        if check_unique_host(args['host'], self.task_managers):
+            return {"Error": "Host already running data collectors"}, 400
+
         # Read configuration file
         if args['configfile'] is not None:
             try:
@@ -50,61 +52,31 @@ class Start(Resource):
                 return {"Error": "Issue loading config",
                         "Msg": str(e)}, 400
         else:
-            run_configuration = json.load(open('../config/default.json'))
+            run_configuration = json.load(open('./server/config/default.json'))
 
         # generate unique id
         job_id = uuid.uuid1()
 
-        '''
         while True:
-            if is valid:
+            results = self.cb.get_data(job_id)
+            if len(results) == 0:
                 break
             else:
-                reroll id
-        '''
+                job_id = uuid.uuid1()
 
         # parse into task objects
         for task in run_configuration.keys():
             self.initq.put(Task(task_type=task, parameters=get_parameters(run_configuration[task]),
-                                loop_interval=run_configuration[task]['loop_interval'], job_id=job_id))
+                                loop_interval=run_configuration[task]['loop_interval'], job_id=job_id, host=args['host']))
             self.waiting_jobids.put(job_id)
 
         # if this is a new id, create a new task_manager and store it in the task managers dictionary
         if job_id not in self.task_managers:
-            if args['restusername'] is None and args['restpassword'] is None:
-                rest_username = Default.rest_username
-                rest_password = Default.rest_password
-            else:
-                rest_username = args['restusername']
-                rest_password = args['restpassword']
-
-            if args['sshusername'] is None and args['sshpassword'] is None:
-                ssh_username = Default.ssh_username
-                ssh_password = Default.ssh_password
-            else:
-                ssh_username = args['sshusername']
-                ssh_password = args['sshpassword']
-
-            email_list = []
-            if args['emails'] is not None:
-                email_list = args['emails'].replace(" ", "").split(",")
-
-            # if one is specified, both should be specified
-            if (args['alertfrequency'] is not None and args['emails'] is None) or (
-                    args['alertfrequency'] is None and args['emails'] is not None):
-                return {"Msg": "Both alert frequency and emails must be specified"}, 400
-
-            email_list = []
-            if args['emails'] is not None:
-                email_list = args['emails'].replace(" ", "").split(",")
-
-            if args['alertfrequency'] is not None:
-                try:
-                    alert_freq = int(args['alertfrequency'])
-                except TypeError as e:
-                    return {"Msg": "Alert Frequency must be an int", "Error": e}, 400
-            else:
-                alert_freq = Default.alert_interval
+            # validate parameters
+            try:
+                self.validate_parameters(args)
+            except TypeError as e:
+                return {"Msg": str(e)}, 400
 
             # calculate how many threads we can allocate
             num_tasks = len(run_configuration)
@@ -116,14 +88,13 @@ class Start(Resource):
             start_time = time.time()
             self.task_managers[str(job_id)] = TaskManager(job_id=str(job_id),
                                                           cluster_name=args['clustername'],
-                                                          build=args['build'],
                                                           master_node=args['host'],
                                                           num_threads=num_tasks,
                                                           cb_instance=self.cb,
-                                                          email_list=email_list,
-                                                          rest_username=rest_username, rest_password=rest_password,
-                                                          ssh_username=ssh_username, ssh_password=ssh_password,
-                                                          alert_interval=alert_freq
+                                                          email_list=self.email_list,
+                                                          rest_username=self.rest_username, rest_password=self.rest_password,
+                                                          ssh_username=self.ssh_username, ssh_password=self.ssh_password,
+                                                          alert_interval=self.alert_freq
                                                           )
 
         # check if there are available threads
@@ -132,7 +103,9 @@ class Start(Resource):
                 self.task_runner(job_id)
                 self.waiting_jobids.get()
             except TypeError as e:
-                return {"Msg": "Error starting Data Collectors", "Error": e}, 400
+                return {"Msg": "Error starting Data Collectors", "Error": str(e)}, 400
+            except AttributeError as e:
+                return {"Msg": "Unrecognized Data Collector", "Error": str(e)}, 400
 
         return {"id": str(job_id)}, 200
 
@@ -144,3 +117,41 @@ class Start(Resource):
         # remove from init queue and push to start queue then start task
         task = self.initq.get()
         self.running_map[str(job_id) + ":_:" + str(task)] = self.task_managers[str(job_id)].start_task(task=task)
+
+    def validate_parameters(self, args):
+        if args['restusername'] is None and args['restpassword'] is None:
+            self.rest_username = Default.rest_username
+            self.rest_password = Default.rest_password
+        else:
+            self.rest_username = args['restusername']
+            self.rest_password = args['restpassword']
+
+        if args['sshusername'] is None and args['sshpassword'] is None:
+            self.ssh_username = Default.ssh_username
+            self.ssh_password = Default.ssh_password
+        else:
+            self.ssh_username = args['sshusername']
+            self.ssh_password = args['sshpassword']
+
+        self.email_list = []
+        if args['emails'] is not None:
+            self.email_list = args['emails'].replace(" ", "").split(",")
+
+        # if one is specified, both should be specified
+        if (args['alertfrequency'] is not None and args['emails'] is None) or (
+                args['alertfrequency'] is None and args['emails'] is not None):
+            # return {"Msg": "Both alert frequency and emails must be specified"}, 400
+            raise TypeError("Both alert frequency and emails must be specified")
+
+        self.email_list = []
+        if args['emails'] is not None:
+            self.email_list = args['emails'].replace(" ", "").split(",")
+
+        if args['alertfrequency'] is not None:
+            try:
+                self.alert_freq = int(args['alertfrequency'])
+            except TypeError as e:
+                # return {"Msg": "Alert Frequency must be an int", "Error": str(e)}, 400
+                raise TypeError("Alert Frequency must be an int")
+        else:
+            self.alert_freq = Default.alert_interval

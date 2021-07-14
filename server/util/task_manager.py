@@ -8,7 +8,6 @@ class TaskManager:
     def __init__(self,
                  job_id,
                  cluster_name,
-                 build,
                  master_node,
                  num_threads,
                  cb_instance,
@@ -22,7 +21,6 @@ class TaskManager:
 
         self.ee = EagleEye(job_id=job_id,
                            cluster_name=cluster_name,
-                           build=build,
                            master_node=master_node,
                            num_tasks=num_threads,
                            cb_instance=cb_instance,
@@ -33,6 +31,7 @@ class TaskManager:
                            cb_host=cb_host,
                            print_all_logs=print_all_logs
                            )
+        self.master_node = master_node
 
         self.task_map = {}
         self.executor = ThreadPoolExecutor(num_threads+1)
@@ -55,43 +54,15 @@ class TaskManager:
         :param task: task object
         :return: Future object
         """
-        if str(task) == "log_parser":
+        try:
             parameters = task.get_parameters()
-            future = self.executor.submit(self.ee.log_parser, self.ee.master_node, task.get_loop_interval(),
-                                          self.task_num, parameters[0])
+            future = self.executor.submit(eval("self.ee.{0}".format(str(task))), task.get_loop_interval(),
+                                          self.task_num, parameters)
             self.task_num += 1
             self.running_threads += 1
             return future
-        elif str(task) == "cpu_collection":
-            parameters = task.get_parameters()
-            future = self.executor.submit(self.ee.cpu_collection, task.get_loop_interval(), self.task_num, parameters[0])
-
-            self.task_num += 1
-            self.running_threads += 1
-            return future
-        elif str(task) == "mem_collection":
-            parameters = task.get_parameters()
-            future = self.executor.submit(self.ee.mem_collection, task.get_loop_interval(), self.task_num, parameters[0])
-
-            self.task_num += 1
-            self.running_threads += 1
-            return future
-        elif str(task) == "neg_stat_check":
-            parameters = task.get_parameters()
-            future = self.executor.submit(self.ee.negative_stat_checker, task.get_loop_interval(), self.task_num, parameters[0])
-
-            self.task_num += 1
-            self.running_threads += 1
-            return future
-        elif str(task) == "failed_query_check":
-            parameters = task.get_parameters()
-            future = self.executor.submit(self.ee.failed_query_check, task.get_loop_interval(), self.task_num, parameters[0])
-
-            self.task_num += 1
-            self.running_threads += 1
-            return future
-        else:
-            raise TypeError("Unrecognized Data Collector")
+        except AttributeError as e:
+            raise AttributeError(e)
 
     def stop(self):
         self.running = False
@@ -110,6 +81,7 @@ class TaskManager:
     def alert(self):
         while self.running:
             time.sleep(self.alert_interval)
+            self.running = self.ee.running
             if self.ee.has_changed:
                 self.ee.on_alert(self.alert_iter)
                 self.alert_iter += 1

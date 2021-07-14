@@ -3,31 +3,40 @@ from datetime import datetime
 
 
 def print_queue(q):
-    str = "["
+    return_str = "["
     num_tasks = q.qsize()
     i = 0
     for task in q.queue:
         if i == num_tasks - 1:
-            str += task.__str__()
+            return_str += task.__str__()
         else:
-            str += task.__str__() + ","
+            return_str += task.__str__() + ","
         i += 1
-    str += "]"
-    return str
+    return_str += "]"
+    return return_str
+
 
 def id_print_queue(q, id):
-    str = "["
+    return_str = "["
     num_tasks = q.qsize()
     i = 0
     for task in q.queue:
-        if task.job_id == id:
+        task_job_id = str(task.get_job_id())
+        if task_job_id == id:
             if i == num_tasks - 1:
-                str += task.__str__()
+                return_str += task.__str__()
             else:
-                str += task.__str__() + ","
+                return_str += task.__str__() + ","
         i += 1
-    str += "]"
-    return str
+    return_str += "]"
+    return return_str
+
+
+def check_unique_host(host, task_managers):
+    for k, v in task_managers.items():
+        if v.master_node == host:
+            return True
+    return False
 
 
 def get_parameters(config_dict, default=['loop_interval']):

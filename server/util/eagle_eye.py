@@ -18,7 +18,6 @@ from server.util.util import logger_init
 class EagleEye:
     def __init__(self, job_id,
                  cluster_name,
-                 build,
                  master_node, num_tasks,
                  cb_instance,
                  email_list,
@@ -29,7 +28,6 @@ class EagleEye:
                  print_all_logs):
         self.job_id = job_id
         self.cluster_name = cluster_name
-        self.build = build
         self.master_node = master_node
         self.cb = cb_instance
         self.email_list = ",".join(email_list)
@@ -41,11 +39,11 @@ class EagleEye:
 
         # create a dir for the job
         # os.mkdir(self.job_id)
-        os.makedirs("./job_logs/{0}".format(self.job_id))
+        os.makedirs("./server/job_logs/{0}".format(self.job_id))
 
         # better title for this
-        self.logger = logger_init(job_id=self.job_id, logger_dir="./job_logs/{0}".format(self.job_id), logger_name="-task_manager")
-        self.alert_logger = logger_init(job_id=self.job_id, logger_dir="./job_logs/{0}".format(self.job_id), logger_name="-alert_thread")
+        self.logger = logger_init(job_id=self.job_id, logger_dir="./server/job_logs/{0}".format(self.job_id), logger_name="-task_manager")
+        self.alert_logger = logger_init(job_id=self.job_id, logger_dir="./server/job_logs/{0}".format(self.job_id), logger_name="-alert_thread")
 
         self.wait_for_cluster_init(master_node, self.logger)
 
@@ -81,7 +79,7 @@ class EagleEye:
         # for each running task, create the message subject line and send the email with the correct message content
         for k, v in self.messages.items():
             # if there is no completed iterations yet, do not alert
-            if v == "" or v == []:
+            if v['data'] == "" or v['data'] == []:
                 continue
 
             # add the data to the document that will be inserted
@@ -89,14 +87,14 @@ class EagleEye:
 
             # we can utilize less dicts if we create a log_parser class to keep track of all the iterations and messages
             message_sub = f"Node: {self.master_node} : {self.task_num_name_map[k]} iteration number {alert_iter} complete"
-            self.send_email(message_sub=message_sub, message_content=v, email_recipients=self.email_list,
+            self.send_email(message_sub=message_sub, message_content=v['data'], email_recipients=self.email_list,
                             logger=self.logger)
 
             # we need to clear the stored results every alert interval
-            if type(self.messages[k]) is str:
-                self.messages[k] = ""
-            elif type(self.messages[k]) is list:
-                self.messages[k] = []
+            if type(self.messages[k]['data']) is str:
+                self.messages[k] = {"type": "static", "data": ""}
+            elif type(self.messages[k]['data']) is list:
+                self.messages[k] = {"type": "time_series", "data": []}
 
         # see if we need to collect logs
         start_time = time.time()
@@ -117,8 +115,11 @@ class EagleEye:
         self.has_changed = False
 
     ######################### TASK FUNCTIONS #########################
-    def log_parser(self, master_node, loop_interval, task_num, config):
-        self.messages[task_num] = ""
+    def log_parser(self, loop_interval, task_num, parameters):
+        # parse parameters
+        config = parameters[0]
+
+        self.messages[task_num] = {"type": "static", "data": ""}
         task_dir, logger = self._task_init(task_num, "Log Parser", "log_parser")
         # config = json.load(config)
 
@@ -131,7 +132,7 @@ class EagleEye:
 
         state_file_dir = task_dir + "/states"
         os.makedirs(state_file_dir)
-        state_file = state_file_dir + "/eagle-eye_" + master_node + ".state"
+        state_file = state_file_dir + "/eagle-eye_" + self.master_node + ".state"
         last_scan_timestamp = ""
         iter_count = 1
 
@@ -217,10 +218,6 @@ class EagleEye:
                         if total_occurences > 0:
                             self.should_cbcollect = True
 
-            if self.running is False:
-                logger.info("Stopping {0}".format(self.task_num_name_map[task_num]))
-                break
-
             self.update_state_file(state_file=state_file, keyword_counts=keyword_counts)
 
             to_break, iter_count = self._task_sleep(loop_interval=loop_interval,
@@ -233,12 +230,14 @@ class EagleEye:
                 logger.info("Stopping {0}".format(self.task_num_name_map[task_num]))
                 break
 
-    def cpu_collection(self, loop_interval, task_num, cpu_threshold):
-        self.messages[task_num] = []
+    def cpu_collection(self, loop_interval, task_num, parameters):
+        # parse parameters
+        cpu_threshold = parameters[0]
+
+        self.messages[task_num] = {"type": "time_series", "data": []}
         task_dir, logger = self._task_init(task_num, "CPU Collection", "cpu_collection")
 
         iter_count = 1
-
         while self.running:
             # cpu check and collect
             usages = []
@@ -260,14 +259,14 @@ class EagleEye:
                 logger.info("Stopping {0}".format(self.task_num_name_map[task_num]))
                 break
 
-    def mem_collection(self, loop_interval, task_num, mem_threshold):
-        self.messages[task_num] = []
+    def mem_collection(self, loop_interval, task_num, parameters):
+        # parse parameters
+        mem_threshold = parameters[0]
+
+        self.messages[task_num] = {"type": "time_series", "data": []}
         task_dir, logger = self._task_init(task_num, "Memory Collection", "mem_collection")
 
         iter_count = 1
-
-        self.messages[task_num] = []
-
         while self.running:
             # cpu check and collect
             usages = []
@@ -293,8 +292,11 @@ class EagleEye:
                 logger.info("Stopping {0}".format(self.task_num_name_map[task_num]))
                 break
 
-    def negative_stat_checker(self, loop_interval, task_num, config):
-        self.messages[task_num] = ""
+    def neg_stat_check(self, loop_interval, task_num, parameters):
+        # parse parameters
+        config = parameters[0]
+
+        self.messages[task_num] = {"type": "static", "data": ""}
         task_dir, logger = self._task_init(task_num, "Negative Stat Checker", "neg_stat_check")
 
         iter_count = 1
@@ -329,8 +331,11 @@ class EagleEye:
                 logger.info("Stopping {0}".format(self.task_num_name_map[task_num]))
                 break
 
-    def failed_query_check(self, loop_interval, task_num, port):
-        self.messages[task_num] = ""
+    def failed_query_check(self, loop_interval, task_num, parameters):
+        # parse parameters
+        port = parameters[0]
+
+        self.messages[task_num] = {"type": "static", "data": ""}
         task_dir, logger = self._task_init(task_num, "Failed Query Check", "failed_query_check")
 
         iter_count = 1
@@ -383,7 +388,7 @@ class EagleEye:
         self.system_task_num_name_map[task_num] = sys_name
 
         # make dir for the task
-        task_dir = "./job_logs/{0}/{1}".format(self.job_id, sys_name)
+        task_dir = "./server/job_logs/{0}/{1}".format(self.job_id, sys_name)
         os.makedirs(task_dir)
 
         logger = logger_init(job_id=self.job_id, logger_dir=task_dir, logger_name="-{0}".format(sys_name))
@@ -401,9 +406,9 @@ class EagleEye:
 
         # add the message content from the iteration
         if type(message_content) is str:
-            self.messages[task_num] += message_content
+            self.messages[task_num]["data"] += message_content
         else:
-            self.messages[task_num].extend(message_content)
+            self.messages[task_num]["data"].extend(message_content)
 
         iter_count += 1
         if not self.running:
@@ -971,6 +976,12 @@ class EagleEye:
                 if status:
                     response = json.loads(str(content, encoding='utf-8'))
 
+                    # extract the build
+                    for node in response['nodes']:
+                        if node['hostname'].split(":")[0] == master:
+                            self.build = node['version']
+                            break
+
                     for node in response["nodes"]:
                         clusternode = {}
                         clusternode["hostname"] = node["hostname"].replace(":8091", "")
@@ -1008,8 +1019,9 @@ class EagleEye:
         return nodelist
 
     def wait_for_cluster_init(self, master_node, logger):
+        start_time = time.time()
         cluster_url = "http://" + master_node + ":8091/pools/default"
-        while True:
+        while time.time() < start_time + (30 * 60):
             logger.info("Waiting for cluster {} init".format(master_node))
             try:
                 status, content, _ = self._http_request(cluster_url, logger)
@@ -1021,6 +1033,9 @@ class EagleEye:
                 print(str(e))
                 pass
             time.sleep(10)
+
+        # if longer than 30 minutes
+        self.running = False
 
     def execute_command(self, command, hostname, ssh_username, ssh_password):
         ssh = paramiko.SSHClient()

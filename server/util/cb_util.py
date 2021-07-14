@@ -20,15 +20,28 @@ class CBConnection:
         except DocumentExistsException:
             return False
 
-    def get_data(self, id, iter_num=None, dc_name=None):
+    def get_data(self, id=None, cluster_name=None, build=None, iter_num=None, dc_name=None):
         # logic to run the correct query
-        query = Queries.id_get_data.format(id)
+        if id is not None:
+            query = Queries.id_get_data.format(id)
+        else:
+            query = Queries.bcn_get_data.format(build, cluster_name)
+
         if dc_name is not None:
-            query = Queries.id_dc_get_data.format(id, dc_name)
+            if id is not None:
+                query = Queries.id_dc_get_data.format(id, dc_name)
+            else:
+                query = Queries.bcn_dc_get_data.format(build, cluster_name, dc_name)
         if iter_num is not None and dc_name is None:
-            query = Queries.id_iter_get_data(id, iter_num)
+            if id is not None:
+                query = Queries.id_iter_get_data(id, iter_num)
+            else:
+                query = Queries.bcn_iter_get_data.format(build, cluster_name, iter_num)
         if iter_num is not None and dc_name is not None:
-            query = Queries.id_iter_dc_get_data(id, iter_num, dc_name)
+            if id is not None:
+                query = Queries.id_iter_dc_get_data(id, iter_num, dc_name)
+            else:
+                query = Queries.bcn_iter_dc_get_data.format(build, cluster_name, iter_num, dc_name)
 
         res = self.cb.query(query)
         result_arr = [x for x in res]

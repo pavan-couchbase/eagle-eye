@@ -11,15 +11,30 @@ class GetData(Resource):
     def post(self):
         parser = reqparse.RequestParser()
 
-        # required
-        parser.add_argument('id', required=True)
-
         # optional
+        parser.add_argument('id', required=False)
         parser.add_argument('iter-num', required=False)
         parser.add_argument('data-collector-name', required=False)
+        parser.add_argument('build', required=False)
+        parser.add_argument('cluster-name', required=False)
 
         args = parser.parse_args()
 
-        res = self.cb.get_data(args['id'], args['iter-num'], args['data-collector-name'])
+        try:
+            self.validate_parameters(args)
+        except TypeError as e:
+            return {"Msg": str(e)}, 400
+
+        res = self.cb.get_data(args['id'], args['cluster-name'], args['build'], args['iter-num'], args['data-collector-name'])
 
         return {"data": res}, 200
+
+    def validate_parameters(self, args):
+        if args['id'] is None and args['build'] is None and args['cluster-name'] is None:
+            raise TypeError("Must specify ID or (build, cluster-name)")
+
+        if args['build'] is not None and args['cluster-name'] is None:
+            raise TypeError("Must specify both build and cluster-name")
+
+        if args['build'] is None and args['cluster-name'] is not None:
+            raise TypeError("Must specify both build and cluster-name")
