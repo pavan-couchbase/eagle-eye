@@ -96,6 +96,13 @@ class EagleEye:
             elif type(self.messages[k]['data']) is list:
                 self.messages[k] = {"type": "time_series", "data": []}
 
+        self.node_map = self.get_services_map(self.master_node, self.logger)
+
+        doc_to_insert['cluster_summary'] = {"type": "static", "data": ""}
+
+        for node in self.node_map:
+            doc_to_insert['cluster_summary']["data"] += "{0} ({1}) : {2}\n".format(node['hostname'], node['status'], str(node['services']))
+
         # see if we need to collect logs
         start_time = time.time()
         self.collected = False
@@ -105,7 +112,7 @@ class EagleEye:
 
         if log_content != "":
             # if there are logs to add, add to document and tell eagle-eye that we should wait to collect again
-            doc_to_insert['logs'] = log_content
+            doc_to_insert['logs'] = {"type": "logs", "data": log_content}
             self.should_cbcollect = False
 
         # call write to CouchbaseDB

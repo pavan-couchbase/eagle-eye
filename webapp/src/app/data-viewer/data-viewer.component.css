@@ -1,0 +1,12 @@
+.static-data {
+  white-space: pre;
+}
+
+.job-header {
+  display: flex;
+  flex-direction: row;
+}
+
+.job-header > * {
+  padding-right: 20px;
+}

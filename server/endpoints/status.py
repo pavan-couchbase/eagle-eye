@@ -22,4 +22,4 @@ class Status(Resource):
             if k.split(":_:")[0] == args['id']:
                 running[k.split(":_:")[1]] = str(v)
 
-        return {"Running": running, "Waiting": id_print_queue(self.initq, args['id'])}, 200
+        return {"Running": str(running), "Waiting": id_print_queue(self.initq, args['id'])}, 200

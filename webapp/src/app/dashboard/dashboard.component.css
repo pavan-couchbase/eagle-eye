@@ -1,0 +1,18 @@
+.input-row {
+  display: flex;
+  flex-direction: row;
+}
+
+.input-row > * {
+  padding-left: 20px;
+}
+
+.request-col {
+  display: flex;
+  flex-direction: column;
+}
+
+mat-divider {
+  padding-bottom: 15px;
+}
+

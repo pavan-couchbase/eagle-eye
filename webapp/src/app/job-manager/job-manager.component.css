@@ -1,0 +1,13 @@
+mat-divider {
+  padding-bottom: 10px;
+}
+
+.results {
+  padding-top: 10px;
+}
+
+.request-col {
+  padding: 20px;
+  border-top: 1px solid blue;
+  border-bottom: 1px solid blue;
+}

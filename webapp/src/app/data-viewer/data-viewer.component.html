@@ -1,0 +1,33 @@
+<div class="job-header">
+  <p>Job ID: {{jobId}}</p>
+  <p>Cluster Name: {{clustername}}</p>
+  <p>Build: {{build}}</p>
+</div>
+<mat-expansion-panel *ngFor="let iter of parsed_data">
+  <mat-expansion-panel-header>Iteration {{iter.iteration}}</mat-expansion-panel-header>
+  <section>
+    <mat-tab-group mat-stretch-tabs>
+      <mat-tab *ngFor="let dc of iter.collected" [label]="dc['name']">
+        <p *ngIf="dc['type'] == 'static'" class="static-data">{{dc['data']}}</p>
+        <div *ngIf="dc['type'] == 'time_series'">
+          <ngx-charts-line-chart
+            [view]="[700,500]"
+            [results]="dc['timeseries']"
+            [legend]="true"
+            [showXAxisLabel]="true"
+            [showYAxisLabel]="true"
+            [xAxis]="true"
+            [yAxis]="true"
+            [xAxisLabel]="'Time'"
+            [yAxisLabel]="'Usage'"
+            [timeline]="true"
+          ></ngx-charts-line-chart>
+        </div>
+        <div *ngIf="dc['type'] == 'logs'">
+          <p class="static-data">{{dc['data']}}</p>
+          <button [disabled]="true">Upload</button>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+  </section>
+</mat-expansion-panel>

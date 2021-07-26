@@ -42,7 +42,7 @@ class Start(Resource):
         args = parser.parse_args()
 
         if check_unique_host(args['host'], self.task_managers):
-            return {"Error": "Host already running data collectors"}, 400
+            return {"Msg": "Host already running data collectors"}, 400
 
         # Read configuration file
         if args['configfile'] is not None:

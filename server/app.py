@@ -1,5 +1,6 @@
 from flask import Flask
 from flask_restful import Api
+from flask_cors import CORS
 import queue
 import logging
 from constants.defaults import Default
@@ -16,6 +17,7 @@ num_threads = 150000
 class App:
     def __init__(self):
         self.app = Flask(__name__)
+        CORS(self.app)
         self.api = Api(self.app)
 
         logging.basicConfig(filename="./server/server_logs/server.log", level=logging.INFO, format=f'%(asctime)s %(levelname)s %(name)s %(threadName)s : %(message)s')

@@ -1,0 +1,27 @@
+<div class="input-row">
+  <form>
+    <mat-form-field>
+      <mat-label>Job ID</mat-label>
+      <input matInput [(ngModel)]="jobId" [ngModelOptions]="{standalone: true}" placeholder="Enter ID">
+    </mat-form-field>
+  </form>
+  <form>
+    <mat-form-field>
+      <mat-label>Cluster Name</mat-label>
+      <input matInput [(ngModel)]="cluster_name" [ngModelOptions]="{standalone: true}" placeholder="Enter Cluster Name">
+    </mat-form-field>
+  </form>
+  <form>
+    <mat-form-field>
+      <mat-label>Build</mat-label>
+      <input matInput [(ngModel)]="build" [ngModelOptions]="{standalone: true}" placeholder="Enter Build">
+    </mat-form-field>
+  </form>
+  <button mat-raised-button (click)="onClickSearch()">Search</button>
+</div>
+<mat-progress-bar mode="indeterminate" *ngIf="getDataLoading"></mat-progress-bar>
+<div class="results" *ngIf="hasResults">
+  <mat-divider></mat-divider>
+  <pre *ngIf="getDataData.length == 0">No Results</pre>
+  <data-viewer *ngIf="getDataData.length > 0" [data]="getDataData"></data-viewer>
+</div>
