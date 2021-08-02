@@ -68,7 +68,14 @@ export class DataViewerComponent implements OnInit {
                 time_series[point['node']] = {'name': point['node'], 'series': []}
               }
 
-              time_series[point['node']]['series'].push({"value": point['usage'], 'name': point['timestamp']})
+              let year = +point['timestamp'].split('T')[0].split('-')[0]
+              let month = +point['timestamp'].split('T')[0].split('-')[1]
+              let day = +point['timestamp'].split('T')[0].split('-')[2]
+              let hour = +point['timestamp'].split('T')[1].split(':')[0]
+              let min = +point['timestamp'].split('T')[1].split(':')[1]
+              let sec = +point['timestamp'].split('T')[1].split(':')[2]
+
+              time_series[point['node']]['series'].push({"value": point['usage'], 'name': new Date(year, month, day, hour, min, sec)})
             }
             let temp = []
             for (let node of Object.keys(time_series)) {

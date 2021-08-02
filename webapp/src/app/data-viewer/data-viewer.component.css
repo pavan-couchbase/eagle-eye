@@ -1,5 +1,5 @@
 .static-data {
-  white-space: pre;
+  white-space: pre-wrap;
 }
 
 .job-header {
@@ -9,4 +9,12 @@
 
 .job-header > * {
   padding-right: 20px;
+}
+
+.healthy {
+  color: green;
+}
+
+.not-healthy {
+  color: red;
 }

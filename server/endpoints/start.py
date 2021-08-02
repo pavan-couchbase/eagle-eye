@@ -2,10 +2,10 @@ from flask_restful import Resource, reqparse
 import time
 import json
 import uuid
-from server.util.task import Task
-from server.util.task_manager import TaskManager
-from server.util.util import get_parameters, print_queue, check_unique_host
-from server.constants.defaults import Default
+from util.task import Task
+from util.task_manager import TaskManager
+from util.util import get_parameters, print_queue, check_unique_host
+from constants.defaults import Default
 
 
 class Start(Resource):
@@ -38,6 +38,7 @@ class Start(Resource):
         parser.add_argument('dockerhost', required=False)
         parser.add_argument('emails', required=False)
         parser.add_argument('alertfrequency', required=False)
+        parser.add_argument('runone', required=False)
 
         args = parser.parse_args()
 
@@ -86,6 +87,12 @@ class Start(Resource):
                 num_tasks = self.num_threads - len(self.running_map) - 1
 
             start_time = time.time()
+
+            if args['runone'] == '1':
+                runone = True
+            else:
+                runone = False
+
             self.task_managers[str(job_id)] = TaskManager(job_id=str(job_id),
                                                           cluster_name=args['clustername'],
                                                           master_node=args['host'],
@@ -94,8 +101,13 @@ class Start(Resource):
                                                           email_list=self.email_list,
                                                           rest_username=self.rest_username, rest_password=self.rest_password,
                                                           ssh_username=self.ssh_username, ssh_password=self.ssh_password,
-                                                          alert_interval=self.alert_freq
+                                                          alert_interval=self.alert_freq,
+                                                          run_one=runone
                                                           )
+
+            if not runone:
+                self.running_map[str(job_id) + ":_:" + "alert"] = self.task_managers[str(job_id)].start_alert()
+
 
         # check if there are available threads
         while self.initq.empty() is not True and len(self.running_map) < self.num_threads:
@@ -106,6 +118,19 @@ class Start(Resource):
                 return {"Msg": "Error starting Data Collectors", "Error": str(e)}, 400
             except AttributeError as e:
                 return {"Msg": "Unrecognized Data Collector", "Error": str(e)}, 400
+
+        # if run one, start the shut down process for threads and then wait so we can collect data at the end.
+        if runone:
+            self.task_managers[str(job_id)].shutdown_collect()
+            to_delete = []
+            for k, v in self.running_map.items():
+                if k.split(":_:")[0] == str(job_id):
+                    to_delete.append(k)
+
+            # rm -rf the dir, init the stop process, and delete from task managers map and running map
+            del self.task_managers[str(job_id)]
+            for k in to_delete:
+                del self.running_map[k]
 
         return {"id": str(job_id)}, 200
 
@@ -136,12 +161,6 @@ class Start(Resource):
         self.email_list = []
         if args['emails'] is not None:
             self.email_list = args['emails'].replace(" ", "").split(",")
-
-        # if one is specified, both should be specified
-        if (args['alertfrequency'] is not None and args['emails'] is None) or (
-                args['alertfrequency'] is None and args['emails'] is not None):
-            # return {"Msg": "Both alert frequency and emails must be specified"}, 400
-            raise TypeError("Both alert frequency and emails must be specified")
 
         self.email_list = []
         if args['emails'] is not None:

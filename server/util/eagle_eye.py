@@ -10,9 +10,9 @@ import traceback
 import socket
 import ast
 from couchbase.cluster import Cluster, PasswordAuthenticator
-from datetime import datetime
+from datetime import datetime, timedelta
 from collections import Mapping, Sequence, Set, deque
-from server.util.util import logger_init
+from util.util import logger_init
 
 
 class EagleEye:
@@ -25,7 +25,8 @@ class EagleEye:
                  ssh_username, ssh_password,
                  docker_host,
                  cb_host,
-                 print_all_logs):
+                 print_all_logs,
+                 run_one):
         self.job_id = job_id
         self.cluster_name = cluster_name
         self.master_node = master_node
@@ -36,6 +37,7 @@ class EagleEye:
         self.docker_host = docker_host
         self.cb_host = cb_host
         self.print_all_logs = print_all_logs
+        self.run_one = run_one
 
         # create a dir for the job
         # os.mkdir(self.job_id)
@@ -98,28 +100,45 @@ class EagleEye:
 
         self.node_map = self.get_services_map(self.master_node, self.logger)
 
-        doc_to_insert['cluster_summary'] = {"type": "static", "data": ""}
+        doc_to_insert['cluster_summary'] = {"type": "csummary", "data": []}
 
         for node in self.node_map:
-            doc_to_insert['cluster_summary']["data"] += "{0} ({1}) : {2}\n".format(node['hostname'], node['status'], str(node['services']))
+            doc_to_insert['cluster_summary']["data"].append({
+                "hostname": node['hostname'],
+                "status": node['status'],
+                "services": node['services']
+            })
 
         # see if we need to collect logs
         start_time = time.time()
         self.collected = False
         log_content = ""
 
-        log_content = self.collect_logs(self.master_node, start_time, self.alert_logger)
+        self.alert_logger.info("Starting Log Collection at {0}".format(str(datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))))
+        try:
+            log_content = self.collect_logs(self.master_node, start_time, self.alert_logger)
+        except Exception as e:
+            self.alert_logger.error(str(e))
+        self.alert_logger.info("Log Collection Complete")
 
         if log_content != "":
             # if there are logs to add, add to document and tell eagle-eye that we should wait to collect again
-            doc_to_insert['logs'] = {"type": "logs", "data": log_content}
+            doc_to_insert['logs'] = {"type": "logs", "data": []}
+            for line in log_content.split("\n"):
+                if line != "" and line != "cbcollect logs: ":
+                    doc_to_insert['logs']['data'].append(line.split(" : ")[1])
             self.should_cbcollect = False
 
+        self.alert_logger.info("Starting insert")
         # call write to CouchbaseDB
-        self.update_cbinstance(doc_to_insert, self.alert_logger)
+        try:
+            self.update_cbinstance(doc_to_insert, self.alert_logger)
+        except Exception as e:
+            self.alert_logger.error(str(e))
 
         # after we have writen, assume nothing has changed until we check again
         self.has_changed = False
+        self.alert_logger.info("Alert iteration {0} finished".format(alert_iter))
 
     ######################### TASK FUNCTIONS #########################
     def log_parser(self, loop_interval, task_num, parameters):
@@ -225,6 +244,10 @@ class EagleEye:
                         if total_occurences > 0:
                             self.should_cbcollect = True
 
+            last_scan_timestamp = datetime.now() - timedelta(minutes=10.0)
+            logger.info("Last scan timestamp :" + str(last_scan_timestamp))
+            keyword_counts["last_scan_timestamp"] = str(last_scan_timestamp)
+
             self.update_state_file(state_file=state_file, keyword_counts=keyword_counts)
 
             to_break, iter_count = self._task_sleep(loop_interval=loop_interval,
@@ -233,7 +256,7 @@ class EagleEye:
                                                                      task_num=task_num,
                                                                      logger=logger,
                                                                      dc_name=self.task_num_name_map[task_num])
-            if to_break is False:
+            if to_break is False or self.run_one:
                 logger.info("Stopping {0}".format(self.task_num_name_map[task_num]))
                 break
 
@@ -262,7 +285,7 @@ class EagleEye:
                 self.check_on_disk_usage(node['hostname'], logger)
 
             to_break, iter_count = self._task_sleep(loop_interval=loop_interval, iter_count=iter_count, message_content=usages, task_num=task_num, logger=logger, dc_name=self.task_num_name_map[task_num])
-            if to_break is False:
+            if to_break is False or self.run_one:
                 logger.info("Stopping {0}".format(self.task_num_name_map[task_num]))
                 break
 
@@ -295,7 +318,7 @@ class EagleEye:
             to_break, iter_count = self._task_sleep(loop_interval=loop_interval, iter_count=iter_count,
                                                     message_content=usages, task_num=task_num, logger=logger,
                                                     dc_name=self.task_num_name_map[task_num])
-            if to_break is False:
+            if to_break is False or self.run_one:
                 logger.info("Stopping {0}".format(self.task_num_name_map[task_num]))
                 break
 
@@ -334,7 +357,7 @@ class EagleEye:
                                                                      task_num=task_num,
                                                                      logger=logger,
                                                                      dc_name=self.task_num_name_map[task_num])
-            if to_break is False:
+            if to_break is False or self.run_one:
                 logger.info("Stopping {0}".format(self.task_num_name_map[task_num]))
                 break
 
@@ -386,7 +409,7 @@ class EagleEye:
                                                                      task_num=task_num,
                                                                      logger=logger,
                                                                      dc_name=self.task_num_name_map[task_num])
-            if to_break is False:
+            if to_break is False or self.run_one:
                 logger.info("Stopping {0}".format(self.task_num_name_map[task_num]))
                 break
 
@@ -1034,8 +1057,9 @@ class EagleEye:
                 status, content, _ = self._http_request(cluster_url, logger)
                 if status:
                     response = json.loads(content)
-                    if all([node["clusterMembership"] == "active" for node in response["nodes"]]):
-                        return
+                    for node in response['nodes']:
+                        if node['hostname'].split(':')[0] == master_node and node['clusterMembership'] == 'active':
+                            return
             except Exception as e:
                 print(str(e))
                 pass

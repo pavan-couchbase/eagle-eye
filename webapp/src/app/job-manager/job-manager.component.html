@@ -187,9 +187,10 @@
               <form>
                 <mat-form-field>
                   <mat-label>Alert Frequency</mat-label>
-                  <input matInput [(ngModel)]="startAlertFrequency" [ngModelOptions]="{standalone: true}" placeholder="Enter Alert Frequency">
+                  <input matInput [(ngModel)]="startAlertFrequency" [ngModelOptions]="{standalone: true}" [disabled]="startRunOne" placeholder="Enter Alert Frequency">
                 </mat-form-field>
               </form>
+              <mat-checkbox [(ngModel)]="startRunOne">Run One Iteration</mat-checkbox>
             </div>
           </section>
         </mat-expansion-panel>

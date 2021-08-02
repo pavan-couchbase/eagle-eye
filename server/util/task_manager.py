@@ -1,7 +1,7 @@
 import time
 from .eagle_eye import EagleEye
 from concurrent.futures import ThreadPoolExecutor
-from server.constants.defaults import Default
+from constants.defaults import Default
 
 
 class TaskManager:
@@ -17,7 +17,8 @@ class TaskManager:
                  docker_host=None,
                  cb_host=Default.tm_cb_host,
                  print_all_logs=False,
-                 alert_interval=Default.alert_interval):
+                 alert_interval=Default.alert_interval,
+                 run_one=False):
 
         self.ee = EagleEye(job_id=job_id,
                            cluster_name=cluster_name,
@@ -29,9 +30,12 @@ class TaskManager:
                            ssh_username=ssh_username, ssh_password=ssh_password,
                            docker_host=docker_host,
                            cb_host=cb_host,
-                           print_all_logs=print_all_logs
+                           print_all_logs=print_all_logs,
+                           run_one=run_one
                            )
         self.master_node = master_node
+        self.job_id = job_id
+        self.cluster_name = cluster_name
 
         self.task_map = {}
         self.executor = ThreadPoolExecutor(num_threads+1)
@@ -43,10 +47,10 @@ class TaskManager:
         self.task_num = 0
 
         self.alert_iter = 1
+        self.start_time = time.time()
+        self.tasks = []
 
-        # init the Alert thread, increment running threads
-        self.executor.submit(self.alert)
-        self.running_threads += 1
+        self.run_one = run_one
 
     def start_task(self, task):
         """
@@ -55,6 +59,7 @@ class TaskManager:
         :return: Future object
         """
         try:
+            self.tasks.append(str(task))
             parameters = task.get_parameters()
             future = self.executor.submit(eval("self.ee.{0}".format(str(task))), task.get_loop_interval(),
                                           self.task_num, parameters)
@@ -63,6 +68,13 @@ class TaskManager:
             return future
         except AttributeError as e:
             raise AttributeError(e)
+
+    def start_alert(self):
+        # init the Alert thread, increment running threads
+        alert_future = self.executor.submit(self.alert)
+        self.running_threads += 1
+
+        return alert_future
 
     def stop(self):
         self.running = False
@@ -75,6 +87,14 @@ class TaskManager:
         self.stop()
         self.executor.shutdown(wait=True)
 
+    def shutdown_collect(self):
+        time.sleep(20)
+        self.stop()
+        self.executor.shutdown(wait=True)
+
+        # wait for threads to shutdown then collect data
+        self.ee.on_alert(self.alert_iter)
+
     def get_running_threads(self):
         return self.running_threads
 
@@ -85,3 +105,18 @@ class TaskManager:
             if self.ee.has_changed:
                 self.ee.on_alert(self.alert_iter)
                 self.alert_iter += 1
+                if self.run_one:
+                    break
+
+    def tm_JSON(self):
+        tm_object = {
+            "clustername": self.cluster_name,
+            "masternode": self.master_node,
+            "jobId": self.job_id,
+            "alert_freq": self.alert_interval,
+            "time_running": time.time() - self.start_time,
+            "running_tasks": self.tasks,
+            "alert_iter": self.alert_iter
+        }
+
+        return tm_object

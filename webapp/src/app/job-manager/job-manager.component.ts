@@ -19,6 +19,7 @@ export class JobManagerComponent implements OnInit {
   startDockerHost: string = "";
   startEmails: string = "";
   startAlertFrequency: number = 3600;
+  startRunOne: boolean = false;
 
   startSuccess$: Observable<any>
   startData: any
@@ -141,7 +142,8 @@ export class JobManagerComponent implements OnInit {
       sshusername: this.startSSHUsername, sshpassword: this.startSSHPassword,
       dockerhost: this.startDockerHost,
       emails: this.startEmails,
-      alertfrequency: this.startAlertFrequency
+      alertfrequency: this.startAlertFrequency,
+      runOne: this.startRunOne
     }
 
     this.store.dispatch(Start({request: request}));

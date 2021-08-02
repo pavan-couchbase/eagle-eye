@@ -1,7 +1,7 @@
 from couchbase.cluster import Cluster, ClusterOptions
 from couchbase_core.cluster import PasswordAuthenticator
 from couchbase.exceptions import DocumentExistsException
-from server.constants.queries import Queries
+from constants.queries import Queries
 
 class CBConnection:
     def __init__(self, username, password, host):

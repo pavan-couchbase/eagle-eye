@@ -11,7 +11,7 @@
         <p *ngIf="dc['type'] == 'static'" class="static-data">{{dc['data']}}</p>
         <div *ngIf="dc['type'] == 'time_series'">
           <ngx-charts-line-chart
-            [view]="[700,500]"
+            [view]="[800,600]"
             [results]="dc['timeseries']"
             [legend]="true"
             [showXAxisLabel]="true"
@@ -24,8 +24,15 @@
           ></ngx-charts-line-chart>
         </div>
         <div *ngIf="dc['type'] == 'logs'">
-          <p class="static-data">{{dc['data']}}</p>
-          <button [disabled]="true">Upload</button>
+          <p *ngFor="let link of dc['data']" class="static-data">url: <a href="{{link}}">{{link}}</a></p>
+          <button [disabled]="true">Upload to Supportal</button>
+          <button>Download All</button>
+        </div>
+        <div *ngIf="dc['type'] == 'csummary'">
+          <div *ngFor="let item of dc['data']">
+            <p>{{item.hostname}} <b *ngIf="item.status == 'healthy'" class="healthy">({{item.status}})</b><b *ngIf="item.status != 'healthy'" class="not-healthy">({{item.status}})</b>: {{item.services}}</p>
+          </div>
+
         </div>
       </mat-tab>
     </mat-tab-group>

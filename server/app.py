@@ -8,6 +8,7 @@ from endpoints.start import Start
 from endpoints.stop import Stop
 from endpoints.get_data import GetData
 from endpoints.status import Status
+from endpoints.server_status import ServerStatus
 from util.cb_util import CBConnection
 
 
@@ -34,6 +35,7 @@ class App:
         self.api.add_resource(Stop, '/stop', resource_class_args=(self.initq, self.running_map, self.task_managers, self.waiting_jobids, num_threads))
         self.api.add_resource(GetData, '/get-data', resource_class_args=(self.initq, self.running_map, self.task_managers, self.cb))
         self.api.add_resource(Status, '/status', resource_class_args=(self.initq, self.running_map, self.task_managers))
+        self.api.add_resource(ServerStatus, '/server-status', resource_class_args=(self.initq, self.task_managers))
 
     def run(self):
         self.app.run()

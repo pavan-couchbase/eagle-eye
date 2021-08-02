@@ -11,6 +11,7 @@ export interface State {
   dockerhost: string,
   emails: string,
   alertfrequency: number,
+  runOne: boolean,
   error: string
 }
 
@@ -24,6 +25,7 @@ export const initialState: State = {
   dockerhost: "",
   emails: "",
   alertfrequency: 0,
+  runOne: false,
   error: ""
 };
 
@@ -38,7 +40,8 @@ const startReducer = createReducer(
     sshusername: request.sshusername, sshpassword: request.sshpassword,
     dockerhost: request.dockerhost,
     emails: request.emails,
-    alertfrequency: request.alertfrequency
+    alertfrequency: request.alertfrequency,
+    runOne: request.runOne
   })),
   on(eeActions.StartSuccess, (state, {jobId}) => ({
     ...state,

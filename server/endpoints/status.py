@@ -1,5 +1,5 @@
 from flask_restful import Resource, reqparse
-from server.util.util import id_print_queue
+from util.util import id_print_queue
 
 
 class Status(Resource):

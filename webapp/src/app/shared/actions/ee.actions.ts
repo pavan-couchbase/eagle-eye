@@ -1,20 +1,25 @@
 import {Action, createAction, props} from "@ngrx/store";
 
-export const START =            '[START] Start eagle-eye';
-export const START_SUCCESS =    '[START] Start eagle-eye success';
-export const START_FAIL =       '[START] Start eagle-eye fail';
+export const START =                '[START] Start eagle-eye';
+export const START_SUCCESS =        '[START] Start eagle-eye success';
+export const START_FAIL =           '[START] Start eagle-eye fail';
 
-export const STOP =             '[STOP] Stop eagle-eye';
-export const STOP_SUCCESS =     '[STOP] Stop eagle-eye success';
-export const STOP_FAIL =        '[STOP] Stop eagle-eye fail';
+export const STOP =                 '[STOP] Stop eagle-eye';
+export const STOP_SUCCESS =         '[STOP] Stop eagle-eye success';
+export const STOP_FAIL =            '[STOP] Stop eagle-eye fail';
 
-export const STATUS =           '[STATUS] Status of eagle-eye';
-export const STATUS_SUCCESS =   '[STATUS] Status of eagle-eye success';
-export const STATUS_FAIL =      '[STATUS] Status of eagle-eye fail';
+export const STATUS =               '[STATUS] Status of eagle-eye';
+export const STATUS_SUCCESS =       '[STATUS] Status of eagle-eye success';
+export const STATUS_FAIL =          '[STATUS] Status of eagle-eye fail';
 
-export const GETDATA =          '[GetData] Get data from eagle-eye';
-export const GETDATA_SUCCESS =  '[GetData] Get data from eagle-eye success';
-export const GETDATA_FAIL =     '[GetData] Get data from eagle-eye fail';
+export const GETDATA =              '[GetData] Get data from eagle-eye';
+export const GETDATA_SUCCESS =      '[GetData] Get data from eagle-eye success';
+export const GETDATA_FAIL =         '[GetData] Get data from eagle-eye fail';
+
+export const SERVERSTATUS =         '[ServerStatus] Status of eagle-eye server';
+export const SERVERSTATUS_SUCCESS = '[ServerStatus] Status of eagle-eye server success'
+export const SERVERSTATUS_FAIL =    '[ServerStatus] Status of eagle-eye server fail'
+
 
 export interface StartRequest {
   host: string,
@@ -25,6 +30,7 @@ export interface StartRequest {
   dockerhost: string,
   emails: string,
   alertfrequency: number,
+  runOne: boolean
 }
 
 export interface GetDataRequest {
@@ -114,6 +120,24 @@ export const GetDataSuccess = createAction(
 
 export const GetDataFail = createAction(
   GETDATA_FAIL,
+  props<{
+    Msg: string
+  }>()
+)
+
+export const ServerStatus = createAction(
+  SERVERSTATUS
+)
+
+export const ServerStatusSuccess = createAction(
+  SERVERSTATUS_SUCCESS,
+  props<{
+    data: any
+  }>()
+)
+
+export const ServerStatusFail = createAction(
+  SERVERSTATUS_FAIL,
   props<{
     Msg: string
   }>()

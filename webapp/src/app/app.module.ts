@@ -16,7 +16,7 @@ import {MatInputModule} from "@angular/material/input";
 import {MatButtonModule} from "@angular/material/button";
 import {MatDividerModule} from "@angular/material/divider";
 import {MatExpansionModule} from "@angular/material/expansion";
-import {EEService} from "./shared/services/async-ee.service.ts.service";
+import {EEService} from "./shared/services/async-ee.service";
 import { EffectsModule } from '@ngrx/effects';
 import {EagleEyeEffects} from "./shared/effects/ee.effects";
 import {reducers} from "./shared/reducers";
@@ -26,6 +26,8 @@ import {MatProgressBarModule} from "@angular/material/progress-bar";
 import { DataViewerComponent } from './data-viewer/data-viewer.component';
 import {MatPaginatorModule} from "@angular/material/paginator";
 import {NgxChartsModule} from "@swimlane/ngx-charts";
+import { ServerStatusComponent } from './server-status/server-status.component';
+import {MatCheckboxModule} from "@angular/material/checkbox";
 
 @NgModule({
   declarations: [
@@ -34,27 +36,29 @@ import {NgxChartsModule} from "@swimlane/ngx-charts";
     ApptabComponent,
     DashboardComponent,
     JobManagerComponent,
-    DataViewerComponent
+    DataViewerComponent,
+    ServerStatusComponent,
   ],
-    imports: [
-        BrowserModule,
-        BrowserAnimationsModule,
-        HttpClientModule,
-        StoreModule.forRoot(reducers),
-        MatToolbarModule,
-        MatIconModule,
-        MatTabsModule,
-        MatFormFieldModule,
-        MatInputModule,
-        MatButtonModule,
-        MatDividerModule,
-        MatExpansionModule,
-        EffectsModule.forRoot([EagleEyeEffects]),
-        FormsModule,
-        MatProgressBarModule,
-        MatPaginatorModule,
-        NgxChartsModule
-    ],
+  imports: [
+    BrowserModule,
+    BrowserAnimationsModule,
+    HttpClientModule,
+    StoreModule.forRoot(reducers),
+    MatToolbarModule,
+    MatIconModule,
+    MatTabsModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule,
+    MatDividerModule,
+    MatExpansionModule,
+    EffectsModule.forRoot([EagleEyeEffects]),
+    FormsModule,
+    MatProgressBarModule,
+    MatPaginatorModule,
+    NgxChartsModule,
+    MatCheckboxModule
+  ],
   providers: [EEService],
   bootstrap: [AppComponent]
 })

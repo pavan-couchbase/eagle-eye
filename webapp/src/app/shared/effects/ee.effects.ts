@@ -3,7 +3,7 @@ import { createEffect, Actions, ofType } from '@ngrx/effects';
 import { Observable ,  of } from 'rxjs';
 import { map, switchMap, catchError } from 'rxjs/operators';
 import * as eeActions from '../actions/ee.actions';
-import { EEService } from "../services/async-ee.service.ts.service";
+import { EEService } from "../services/async-ee.service";
 
 @Injectable()
 export class EagleEyeEffects {
@@ -20,7 +20,8 @@ export class EagleEyeEffects {
           (action as any).request.restusername, (action as any).request.restpassword,
           (action as any).request.sshusername, (action as any).request.sshpassword,
           (action as any).request.dockerhost,
-          (action as any).request.emails, (action as any).request.alertfrequency).pipe(
+          (action as any).request.emails, (action as any).request.alertfrequency,
+          (action as any).request.runOne).pipe(
             map(startResult => eeActions.StartSuccess({jobId: startResult.id})),
             catchError(startError => of(eeActions.StartFail({error: startError.Msg})))
           )
@@ -60,6 +61,18 @@ export class EagleEyeEffects {
           (action as any).request.build, (action as any).request.cluster_name).pipe(
             map(getDataResult => eeActions.GetDataSuccess({data: getDataResult.data})),
             catchError(getDataError => of(eeActions.GetDataFail({Msg: getDataError.Msg})))
+        )
+      })
+    )
+  })
+
+  serverStatusEE$ = createEffect(() => {
+    return this.actions.pipe(
+      ofType(eeActions.SERVERSTATUS),
+      switchMap(action => {
+        return this.eeService.serverStatus().pipe(
+          map(serverStatusResult => eeActions.ServerStatusSuccess({data: serverStatusResult.data})),
+          catchError(serverStatusError => of(eeActions.ServerStatusFail({Msg: serverStatusError.Msg})))
         )
       })
     )

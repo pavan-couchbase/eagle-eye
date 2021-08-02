@@ -20,7 +20,8 @@ export class EEService {
         sshusername: string, sshpassword: string,
         dockerhost: string,
         emails: string,
-        alertfrequency: number): Observable<any> {
+        alertfrequency: number,
+        runOne: boolean): Observable<any> {
     let apiUrl = EERestAPIUrl + "/start";
     let headers = new HttpHeaders();
     let params = new HttpParams();
@@ -44,6 +45,9 @@ export class EEService {
       params = params.set("emails", emails);
     if (alertfrequency > 0 && alertfrequency != 3600)
       params = params.set("alertfrequency", alertfrequency);
+    if (runOne) {
+      params = params.set("runone", 1);
+    }
 
     return this.executeRequest(apiUrl, headers, params)
   }
@@ -91,6 +95,15 @@ export class EEService {
     return this.executeRequest(apiUrl, headers, params)
   }
 
+  serverStatus(): Observable<any> {
+    let apiUrl = EERestAPIUrl + "/server-status";
+    let headers = new HttpHeaders();
+    let params = new HttpParams();
+
+    return this.executeRequest(apiUrl, headers, params);
+
+  }
+
   executeRequest(apiUrl: string, headers: any, params: any): Observable<any> {
     return this.http.post<any>(apiUrl, {}, ({headers: headers, params: params}))
       .pipe(map((response: Response) => { return response; }),
@@ -98,7 +111,7 @@ export class EEService {
   }
 
   private handleError(error: any): Promise<any> {
-    console.log("start request error")
+    console.log("request error")
     console.log(error)
     return Promise.reject(error.error || error)
   }
