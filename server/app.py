@@ -38,7 +38,7 @@ class App:
         self.api.add_resource(ServerStatus, '/server-status', resource_class_args=(self.initq, self.task_managers))
 
     def run(self):
-        self.app.run()
+        self.app.run(host='0.0.0.0')
 
 
 if __name__ == '__main__':
