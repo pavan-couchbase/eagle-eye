@@ -441,13 +441,19 @@ class EagleEye:
             self.messages[task_num]["data"].extend(message_content)
 
         iter_count += 1
+        self._sleep(loop_interval)
+
         if not self.running:
             logger.info("Stopping {0}".format(dc_name))
             return False, iter_count
 
-        time.sleep(loop_interval)
         return True, iter_count
 
+    def _sleep(self, loop_interval):
+        for i in range(0, loop_interval):
+            if not self.running:
+                break
+            time.sleep(1)
     ######################### HELPER FUNCTIONS #########################
     def collect_logs(self, master_node, start_time, logger):
         message_content = ""

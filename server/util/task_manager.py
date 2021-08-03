@@ -100,8 +100,7 @@ class TaskManager:
 
     def alert(self):
         while self.running:
-            time.sleep(self.alert_interval)
-            self.running = self.ee.running
+            self._sleep(alert_interval=self.alert_interval)
             if self.ee.has_changed:
                 self.ee.on_alert(self.alert_iter)
                 self.alert_iter += 1
@@ -120,3 +119,10 @@ class TaskManager:
         }
 
         return tm_object
+
+    def _sleep(self, alert_interval):
+        for i in range(0, alert_interval):
+            self.running = self.ee.running
+            if not self.running:
+                break
+            time.sleep(1)
