@@ -104,6 +104,17 @@ export class EEService {
 
   }
 
+  uploadSupportal(id: string, iteration: number): Observable<any> {
+    let apiUrl = EERestAPIUrl + "/upload-supportal"
+    let headers = new HttpHeaders();
+    let params = new HttpParams();
+
+    params = params.set("id", id);
+    params = params.set("iteration", iteration);
+
+    return this.executeRequest(apiUrl, headers, params);
+  }
+
   executeRequest(apiUrl: string, headers: any, params: any): Observable<any> {
     return this.http.post<any>(apiUrl, {}, ({headers: headers, params: params}))
       .pipe(map((response: Response) => { return response; }),

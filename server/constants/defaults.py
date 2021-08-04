@@ -7,4 +7,4 @@ class Default:
 
     # eagle-eye store information
     cb_username, cb_password = "Administrator", "password"
-    cb_host = "172.23.100.10"
+    cb_host = "qe.service.couchbase.com"

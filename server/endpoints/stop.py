@@ -40,7 +40,7 @@ class Stop(Resource):
                     del self.running_map[k]
 
                 # not removing directory for now, see what users like
-                # shutil.rmtree("./" + args['id'])
+                # shutil.rmtree("./server/job_logs/" + args['id'])
 
                 # if there are tasks waiting, start them
                 started_jobs = []

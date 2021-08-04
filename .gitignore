@@ -1,6 +1,9 @@
 venv
 venv/**
 
+supportal
+supportal/**
+
 *.log
 *.state
 

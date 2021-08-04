@@ -1,4 +1,7 @@
 import {Component, Input, OnInit} from '@angular/core';
+import {Store} from "@ngrx/store";
+import {UploadSupportal} from "../shared/actions/ee.actions";
+import {Observable} from "rxjs";
 
 @Component({
   selector: 'data-viewer',
@@ -25,7 +28,7 @@ export class DataViewerComponent implements OnInit {
   build: any;
   clustername: any;
 
-  constructor() {
+  constructor(private store: Store<any>) {
   }
 
   ngOnInit(): void {
@@ -95,4 +98,17 @@ export class DataViewerComponent implements OnInit {
     }
   }
 
+  onClickUploadSupportal(id: string, iteration: number) {
+    this.store.dispatch(UploadSupportal({request: {jobId: id, iter_num: iteration}}))
+  }
+
+  onClickDownloadAll(iteration: any) {
+    for (let dc of iteration['collected']) {
+      if (dc['type'] == 'logs') {
+        for (let url of dc['data']) {
+          window.open(url, "_blank");
+        }
+      }
+    }
+  }
 }

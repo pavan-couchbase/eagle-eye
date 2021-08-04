@@ -77,4 +77,16 @@ export class EagleEyeEffects {
       })
     )
   })
+
+  uploadSupportalEE$ = createEffect(() => {
+      return this.actions.pipe(
+        ofType(eeActions.UPLOADSUPPORTAL),
+        switchMap(action => {
+          return this.eeService.uploadSupportal((action as any).request.jobId, (action as any).request.iter_num).pipe(
+            map(uploadSupportalSuccess => eeActions.UploadSupportalSuccess({Msg: uploadSupportalSuccess.Msg})),
+            catchError(uploadSupportalError => of(eeActions.UploadSupportalFail({Msg: uploadSupportalError.Msg})))
+          )
+        })
+      )
+  })
 }

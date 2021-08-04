@@ -20,6 +20,14 @@ class CBConnection:
         except DocumentExistsException:
             return False
 
+    def upload_supportal(self, id, iteration):
+        query = Queries.get_logs.format(id, iteration)
+
+        res = self.cb.query(query)
+        result_arr = [x for x in res]
+
+        return result_arr[0]
+
     def get_data(self, id=None, cluster_name=None, build=None, iter_num=None, dc_name=None):
         # logic to run the correct query
         if id is not None:
