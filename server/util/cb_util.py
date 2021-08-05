@@ -28,6 +28,10 @@ class CBConnection:
 
         return result_arr[0]
 
+    def update_snapshot_url(self, id, iteration, snap_url):
+        query = Queries.update_snapshot_url.format(id, iteration, snap_url)
+        res = self.cb.query(query)
+
     def get_data(self, id=None, cluster_name=None, build=None, iter_num=None, dc_name=None):
         # logic to run the correct query
         if id is not None:

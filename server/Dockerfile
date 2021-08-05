@@ -22,6 +22,7 @@ RUN pip3 install flask-restful
 RUN pip3 install flask-cors
 RUN pip3 install paramiko
 RUN pip3 install httplib2
+RUN pip3 install requests
 # install couchbase python sdk
 RUN python3 -m pip install --upgrade pip setuptools wheel
 RUN yum install -y gcc gcc-c++ python3-devel python3-pip cmake
