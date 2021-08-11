@@ -66,6 +66,8 @@ class EagleEye:
         self.has_changed = False
         self.should_cbcollect = False
         self.collected = False
+        self.collect_mem = False
+        self.collect_cpu = False
 
     def stop(self):
         self.running = False
@@ -78,6 +80,8 @@ class EagleEye:
             "build": self.build
         }
 
+        email_text = ""
+
         # for each running task, create the message subject line and send the email with the correct message content
         for k, v in self.messages.items():
             # if there is no completed iterations yet, do not alert
@@ -88,9 +92,19 @@ class EagleEye:
             doc_to_insert[self.system_task_num_name_map[k]] = v
 
             # we can utilize less dicts if we create a log_parser class to keep track of all the iterations and messages
-            message_sub = f"Node: {self.master_node} : {self.task_num_name_map[k]} iteration number {alert_iter} complete"
-            self.send_email(message_sub=message_sub, message_content=v['data'], email_recipients=self.email_list,
-                            logger=self.logger)
+            if v['type'] == 'time_series':
+                if self.collect_cpu and self.system_task_num_name_map[k] == 'cpu_collection':
+                    email_text += "\n" + "=============================" + self.task_num_name_map[k] + "============================= \n"
+                    email_text += v['data']
+                    email_text += "\n"
+                if self.collect_mem and self.system_task_num_name_map[k] == 'mem_collection':
+                    email_text += "\n" + "=============================" + self.task_num_name_map[k] + "============================= \n"
+                    email_text += v['data']
+                    email_text += "\n"
+            else:
+                email_text += "\n" + "=============================" + self.task_num_name_map[k] + "============================= \n"
+                email_text += v['data']
+                email_text += "\n"
 
             # we need to clear the stored results every alert interval
             if type(self.messages[k]['data']) is str:
@@ -102,12 +116,17 @@ class EagleEye:
 
         doc_to_insert['cluster_summary'] = {"type": "csummary", "data": []}
 
+        email_text += "\n============================= Cluster Summary =============================\n"
         for node in self.node_map:
             doc_to_insert['cluster_summary']["data"].append({
                 "hostname": node['hostname'],
                 "status": node['status'],
                 "services": node['services']
             })
+
+            email_text += f"{node['hostname']} ({node['status']}) : {node['services']}"
+            email_text += "\n"
+
 
         # see if we need to collect logs
         start_time = time.time()
@@ -122,12 +141,25 @@ class EagleEye:
         self.alert_logger.info("Log Collection Complete")
 
         if log_content != "":
+            email_text += "\n" + "=============================" + "Logs =============================\n"
+            email_text += log_content
+
             # if there are logs to add, add to document and tell eagle-eye that we should wait to collect again
             doc_to_insert['logs'] = {"type": "logs", "data": []}
             for line in log_content.split("\n"):
                 if line != "" and line != "cbcollect logs: ":
                     doc_to_insert['logs']['data'].append(line.split(" : ")[1])
             self.should_cbcollect = False
+
+        # send consolidated emails
+        message_sub = f"Node: {self.master_node} Cluster: {self.cluster_name} : iteration number {alert_iter}"
+        self.alert_logger.info("Sending Email: {0}".format(message_sub))
+        try:
+            self.send_email(message_sub=message_sub, message_content=email_text, email_recipients=self.email_list,
+                            logger=self.alert_logger)
+            self.alert_logger.info("Email Sent Success")
+        except Exception as e:
+            self.alert_logger.error("Email Error: " + str(e))
 
         self.alert_logger.info("Starting insert")
         # call write to CouchbaseDB
@@ -162,103 +194,106 @@ class EagleEye:
         last_scan_timestamp = ""
         iter_count = 1
 
-        while self.running:
-            if os.path.exists(state_file):
-                s = open(state_file, 'r').read()
-                prev_keyword_counts = ast.literal_eval(s)
-                last_scan_timestamp = datetime.strptime(prev_keyword_counts["last_scan_timestamp"],
-                                                        "%Y-%m-%d %H:%M:%S.%f")
-            else:
-                prev_keyword_counts = None
-            dump_dir_name = task_dir + "/dump_collected_" + str(iter_count)
-            if not os.path.isdir(dump_dir_name):
-                os.mkdir(dump_dir_name)
-            message_content = ""
+        try:
+            while self.running:
+                if os.path.exists(state_file):
+                    s = open(state_file, 'r').read()
+                    prev_keyword_counts = ast.literal_eval(s)
+                    last_scan_timestamp = datetime.strptime(prev_keyword_counts["last_scan_timestamp"],
+                                                            "%Y-%m-%d %H:%M:%S.%f")
+                else:
+                    prev_keyword_counts = None
+                dump_dir_name = task_dir + "/dump_collected_" + str(iter_count)
+                if not os.path.isdir(dump_dir_name):
+                    os.mkdir(dump_dir_name)
+                message_content = ""
 
-            if not self.node_map:
-                continue
-
-            for component in config:
-                nodes = self.find_nodes_with_service(self.node_map,
-                                                     component["services"])
-                if len(nodes) == 0:
-                    logger.info("No Nodes with {0} service : {1} ... SKIPPING".format(component["services"],
-                                                                                      str(nodes)))
+                if not self.node_map:
                     continue
 
-                logger.info(
-                    "Nodes with {0} service : {1}".format(component["services"],
-                                                          str(nodes)))
+                for component in config:
+                    nodes = self.find_nodes_with_service(self.node_map,
+                                                         component["services"])
+                    if len(nodes) == 0:
+                        logger.info("No Nodes with {0} service : {1} ... SKIPPING".format(component["services"],
+                                                                                          str(nodes)))
+                        continue
 
-                for keyword in component['keywords']:
-                    key = component["component"] + "_" + keyword
                     logger.info(
-                        "--+--+--+--+-- Parsing logs for {0} component looking for {1} --+--+--+--+--".format(
-                            component["component"], keyword))
-                    total_occurences = 0
+                        "Nodes with {0} service : {1}".format(component["services"],
+                                                              str(nodes)))
 
-                    for node in nodes:
-                        if component["ignore_keywords"]:
+                    for keyword in component['keywords']:
+                        key = component["component"] + "_" + keyword
+                        logger.info(
+                            "--+--+--+--+-- Parsing logs for {0} component looking for {1} --+--+--+--+--".format(
+                                component["component"], keyword))
+                        total_occurences = 0
 
-                            command = "zgrep -i \"{0}\" /opt/couchbase/var/lib/couchbase/logs/{1} | grep -vE \"{2}\"".format(
-                                keyword, component["logfiles"], "|".join(component["ignore_keywords"]))
-                        else:
-                            command = "zgrep -i \"{0}\" /opt/couchbase/var/lib/couchbase/logs/{1}".format(
-                                keyword, component["logfiles"])
-                        occurences = 0
-                        try:
-                            occurences, output, std_err = self.execute_command(
-                                command, node, self.ssh_username, self.ssh_password)
-                        except Exception as e:
-                            logger.info("Found an exception {0}".format(e))
-                            message_content = message_content + '\n\n' + node + " : " + str(component["component"])
-                            message_content = message_content + '\n\n' + "Found an exception {0}".format(e) + "\n"
-                        if occurences > 0:
-                            logger.warn(
-                                "*** {0} occurences of {1} keyword found on {2} ***".format(
-                                    occurences,
-                                    keyword,
-                                    node))
-                            message_content = message_content + '\n\n' + node + " : " + str(component["component"])
-                            if self.print_all_logs is True or last_scan_timestamp == "":
-                                logger.debug('\n'.join(output))
-                                try:
-                                    message_content = message_content + '\n' + '\n'.join(output)
-                                except UnicodeDecodeError as e:
-                                    logger.warn(str(e))
-                                    message_content = message_content + '\n' + '\n'.join(output).decode("utf-8")
+                        for node in nodes:
+                            if component["ignore_keywords"]:
+
+                                command = "zgrep -i \"{0}\" /opt/couchbase/var/lib/couchbase/logs/{1} | grep -vE \"{2}\"".format(
+                                    keyword, component["logfiles"], "|".join(component["ignore_keywords"]))
                             else:
-                                message_content = self.print_output(output, last_scan_timestamp, message_content)
-                            # for i in range(len(output)):
-                            #    self.logger.info(output[i])
-                        total_occurences += occurences
+                                command = "zgrep -i \"{0}\" /opt/couchbase/var/lib/couchbase/logs/{1}".format(
+                                    keyword, component["logfiles"])
+                            occurences = 0
+                            try:
+                                occurences, output, std_err = self.execute_command(
+                                    command, node, self.ssh_username, self.ssh_password)
+                            except Exception as e:
+                                logger.info("Found an exception {0}".format(e))
+                                message_content = message_content + '\n\n' + node + " : " + str(component["component"])
+                                message_content = message_content + '\n\n' + "Found an exception {0}".format(e) + "\n"
+                            if occurences > 0:
+                                logger.warn(
+                                    "*** {0} occurences of {1} keyword found on {2} ***".format(
+                                        occurences,
+                                        keyword,
+                                        node))
+                                message_content = message_content + '\n\n' + node + " : " + str(component["component"])
+                                if self.print_all_logs is True or last_scan_timestamp == "":
+                                    logger.debug('\n'.join(output))
+                                    try:
+                                        message_content = message_content + '\n' + '\n'.join(output)
+                                    except UnicodeDecodeError as e:
+                                        logger.warn(str(e))
+                                        message_content = message_content + '\n' + '\n'.join(output).decode("utf-8")
+                                else:
+                                    message_content = self.print_output(output, last_scan_timestamp, message_content, logger)
+                                # for i in range(len(output)):
+                                #    self.logger.info(output[i])
+                            total_occurences += occurences
 
-                    keyword_counts[key] = total_occurences
-                    if prev_keyword_counts is not None and key in prev_keyword_counts.keys():
-                        if total_occurences > int(prev_keyword_counts[key]):
-                            logger.warn(
-                                "There have been more occurences of keyword {0} in the logs since the last iteration. Hence performing a cbcollect.".format(
-                                    keyword))
-                            self.should_cbcollect = True
-                    else:
-                        if total_occurences > 0:
-                            self.should_cbcollect = True
+                        keyword_counts[key] = total_occurences
+                        if prev_keyword_counts is not None and key in prev_keyword_counts.keys():
+                            if total_occurences > int(prev_keyword_counts[key]):
+                                logger.warn(
+                                    "There have been more occurences of keyword {0} in the logs since the last iteration. Hence performing a cbcollect.".format(
+                                        keyword))
+                                self.should_cbcollect = True
+                        else:
+                            if total_occurences > 0:
+                                self.should_cbcollect = True
 
-            last_scan_timestamp = datetime.now() - timedelta(minutes=10.0)
-            logger.info("Last scan timestamp :" + str(last_scan_timestamp))
-            keyword_counts["last_scan_timestamp"] = str(last_scan_timestamp)
+                last_scan_timestamp = datetime.now() - timedelta(minutes=10.0)
+                logger.info("Last scan timestamp :" + str(last_scan_timestamp))
+                keyword_counts["last_scan_timestamp"] = str(last_scan_timestamp)
 
-            self.update_state_file(state_file=state_file, keyword_counts=keyword_counts)
+                self.update_state_file(state_file=state_file, keyword_counts=keyword_counts)
 
-            to_break, iter_count = self._task_sleep(loop_interval=loop_interval,
-                                                                     iter_count=iter_count,
-                                                                     message_content=message_content,
-                                                                     task_num=task_num,
-                                                                     logger=logger,
-                                                                     dc_name=self.task_num_name_map[task_num])
-            if to_break is False or self.run_one:
-                logger.info("Stopping {0}".format(self.task_num_name_map[task_num]))
-                break
+                to_break, iter_count = self._task_sleep(loop_interval=loop_interval,
+                                                        iter_count=iter_count,
+                                                        message_content=message_content,
+                                                        task_num=task_num,
+                                                        logger=logger,
+                                                        dc_name=self.task_num_name_map[task_num])
+                if to_break is False or self.run_one:
+                    logger.info("Stopping {0}".format(self.task_num_name_map[task_num]))
+                    break
+        except Exception as e:
+            logger.error(str(e))
 
     def cpu_collection(self, loop_interval, task_num, parameters):
         # parse parameters
@@ -268,26 +303,30 @@ class EagleEye:
         task_dir, logger = self._task_init(task_num, "CPU Collection", "cpu_collection")
 
         iter_count = 1
-        while self.running:
-            # cpu check and collect
-            usages = []
-            for node in self.node_map:
-                usages.append({"node": node['hostname'], "timestamp": str(datetime.now().strftime('%Y-%m-%dT%H:%M:%S')), "usage": node['cpuUsage']})
-                self.has_changed = True
+        try:
+            while self.running:
+                # cpu check and collect
+                usages = []
+                for node in self.node_map:
+                    usages.append({"node": node['hostname'], "timestamp": str(datetime.now().strftime('%Y-%m-%dT%H:%M:%S')), "usage": node['cpuUsage']})
+                    self.has_changed = True
 
-                if node["cpuUsage"] > cpu_threshold:
-                    logger.warn(
-                        "***** ALERT : CPU usage on {0} is very high : {1}%".format(
-                            node["hostname"], node["cpuUsage"]))
-                    self.should_cbcollect = True
-                    # if cbcollect_on_high_mem_cpu_usage:
-                    #    should_cbcollect = True
-                self.check_on_disk_usage(node['hostname'], logger)
+                    if node["cpuUsage"] > cpu_threshold:
+                        logger.warn(
+                            "***** ALERT : CPU usage on {0} is very high : {1}%".format(
+                                node["hostname"], node["cpuUsage"]))
+                        self.should_cbcollect = True
+                        self.collect_cpu = True
+                        # if cbcollect_on_high_mem_cpu_usage:
+                        #    should_cbcollect = True
+                    self.check_on_disk_usage(node['hostname'], logger)
 
-            to_break, iter_count = self._task_sleep(loop_interval=loop_interval, iter_count=iter_count, message_content=usages, task_num=task_num, logger=logger, dc_name=self.task_num_name_map[task_num])
-            if to_break is False or self.run_one:
-                logger.info("Stopping {0}".format(self.task_num_name_map[task_num]))
-                break
+                to_break, iter_count = self._task_sleep(loop_interval=loop_interval, iter_count=iter_count, message_content=usages, task_num=task_num, logger=logger, dc_name=self.task_num_name_map[task_num])
+                if to_break is False or self.run_one:
+                    logger.info("Stopping {0}".format(self.task_num_name_map[task_num]))
+                    break
+        except Exception as e:
+            logger.error(str(e))
 
     def mem_collection(self, loop_interval, task_num, parameters):
         # parse parameters
@@ -297,30 +336,34 @@ class EagleEye:
         task_dir, logger = self._task_init(task_num, "Memory Collection", "mem_collection")
 
         iter_count = 1
-        while self.running:
-            # cpu check and collect
-            usages = []
-            for node in self.node_map:
-                usages.append({"node": node['hostname'], "timestamp": str(datetime.now().strftime('%Y-%m-%dT%H:%M:%S')), "usage": node['memUsage']})
-                self.has_changed = True
+        try:
+            while self.running:
+                # cpu check and collect
+                usages = []
+                for node in self.node_map:
+                    usages.append({"node": node['hostname'], "timestamp": str(datetime.now().strftime('%Y-%m-%dT%H:%M:%S')), "usage": node['memUsage']})
+                    self.has_changed = True
 
-                if node["memUsage"] > mem_threshold:
-                    logger.warn(
-                        "***** ALERT : Memory usage on {0} is very high : {1}%".format(
-                            node["hostname"], node["memUsage"]))
-                    self.should_cbcollect = True
-                self.check_on_disk_usage(node['hostname'], logger)
+                    if node["memUsage"] > mem_threshold:
+                        logger.warn(
+                            "***** ALERT : Memory usage on {0} is very high : {1}%".format(
+                                node["hostname"], node["memUsage"]))
+                        self.should_cbcollect = True
+                        self.collect_mem = True
+                    self.check_on_disk_usage(node['hostname'], logger)
 
-            logger.info(
-                "====== {0} iteration number {1} complete. Sleeping for {2} seconds ======".format(
-                    self.task_num_name_map[task_num], iter_count, loop_interval))
+                logger.info(
+                    "====== {0} iteration number {1} complete. Sleeping for {2} seconds ======".format(
+                        self.task_num_name_map[task_num], iter_count, loop_interval))
 
-            to_break, iter_count = self._task_sleep(loop_interval=loop_interval, iter_count=iter_count,
-                                                    message_content=usages, task_num=task_num, logger=logger,
-                                                    dc_name=self.task_num_name_map[task_num])
-            if to_break is False or self.run_one:
-                logger.info("Stopping {0}".format(self.task_num_name_map[task_num]))
-                break
+                to_break, iter_count = self._task_sleep(loop_interval=loop_interval, iter_count=iter_count,
+                                                        message_content=usages, task_num=task_num, logger=logger,
+                                                        dc_name=self.task_num_name_map[task_num])
+                if to_break is False or self.run_one:
+                    logger.info("Stopping {0}".format(self.task_num_name_map[task_num]))
+                    break
+        except Exception as e:
+            logger.error(str(e))
 
     def neg_stat_check(self, loop_interval, task_num, parameters):
         # parse parameters
@@ -332,34 +375,37 @@ class EagleEye:
         iter_count = 1
         message_content = ""
 
-        while self.running:
-            if not self.node_map:
-                continue
+        try:
+            while self.running:
+                if not self.node_map:
+                    continue
 
-            for component in config:
-                nodes = self.find_nodes_with_service(self.node_map, component['services'])
+                for component in config:
+                    nodes = self.find_nodes_with_service(self.node_map, component['services'])
 
-                logger.info("Nodes with {0} service : {1}".format(component["services"],
-                                                                  str(nodes)))
+                    logger.info("Nodes with {0} service : {1}".format(component["services"],
+                                                                      str(nodes)))
 
-                for node in nodes:
-                    message_content = message_content + '\n\n' + node + " : " + str(component["component"])
-                    try:
-                        fin_neg_stat, message_content = self.check_stats_api(node, component, message_content, logger)
-                        if fin_neg_stat.__len__() != 0:
-                            self.should_cbcollect = True
-                    except Exception as e:
-                        logger.info("Found an exception {0}".format(e))
+                    for node in nodes:
+                        message_content = message_content + '\n\n' + node + " : " + str(component["component"])
+                        try:
+                            fin_neg_stat, message_content = self.check_stats_api(node, component, message_content, logger)
+                            if fin_neg_stat.__len__() != 0:
+                                self.should_cbcollect = True
+                        except Exception as e:
+                            logger.info("Found an exception {0}".format(e))
 
-            to_break, iter_count = self._task_sleep(loop_interval=loop_interval,
-                                                                     iter_count=iter_count,
-                                                                     message_content=message_content,
-                                                                     task_num=task_num,
-                                                                     logger=logger,
-                                                                     dc_name=self.task_num_name_map[task_num])
-            if to_break is False or self.run_one:
-                logger.info("Stopping {0}".format(self.task_num_name_map[task_num]))
-                break
+                to_break, iter_count = self._task_sleep(loop_interval=loop_interval,
+                                                                         iter_count=iter_count,
+                                                                         message_content=message_content,
+                                                                         task_num=task_num,
+                                                                         logger=logger,
+                                                                         dc_name=self.task_num_name_map[task_num])
+                if to_break is False or self.run_one:
+                    logger.info("Stopping {0}".format(self.task_num_name_map[task_num]))
+                    break
+        except Exception as e:
+            logger.error(str(e))
 
     def failed_query_check(self, loop_interval, task_num, parameters):
         # parse parameters
@@ -371,47 +417,50 @@ class EagleEye:
         iter_count = 1
         message_content = ""
 
-        while self.running:
-            if not self.node_map:
-                continue
+        try:
+            while self.running:
+                if not self.node_map:
+                    continue
 
-            n1ql_nodes = self.find_nodes_with_service(self.node_map, "n1ql")
-            if n1ql_nodes:
-                # Check to make sure all nodes are healthy
-                self.logger.info("Checking if all query nodes are healthy")
-                message = self.check_nodes_healthy(nodes=n1ql_nodes, port=port, logger=logger)
+                n1ql_nodes = self.find_nodes_with_service(self.node_map, "n1ql")
+                if n1ql_nodes:
+                    # Check to make sure all nodes are healthy
+                    self.logger.info("Checking if all query nodes are healthy")
+                    message = self.check_nodes_healthy(nodes=n1ql_nodes, port=port, logger=logger)
 
-                if not message == '':
-                    message_content = message_content + '\n\n' + str(n1ql_nodes) + " : query"
-                    message_content = message_content + '\n\n' + message + "\n"
-                # Check system:completed_requests for errors
-                self.logger.info("Checking system:completed requests for errors")
-                message = self.check_completed_requests(nodes=n1ql_nodes,
-                                                                        port=port,
-                                                                        logger=logger)
+                    if not message == '':
+                        message_content = message_content + '\n\n' + str(n1ql_nodes) + " : query"
+                        message_content = message_content + '\n\n' + message + "\n"
+                    # Check system:completed_requests for errors
+                    self.logger.info("Checking system:completed requests for errors")
+                    message = self.check_completed_requests(nodes=n1ql_nodes,
+                                                                            port=port,
+                                                                            logger=logger)
 
-                if not message == '':
-                    message_content = message_content + '\n\n' + str(n1ql_nodes) + " : query"
-                    message_content = message_content + '\n\n' + message + "\n"
-                # Check active_requests to make sure that are no more than 1k active requests at a single time
-                self.logger.info("Checking system:active requests for too many requests")
-                message = self.check_active_requests(nodes=n1ql_nodes,
-                                                                     port=port,
-                                                                     logger=logger)
+                    if not message == '':
+                        message_content = message_content + '\n\n' + str(n1ql_nodes) + " : query"
+                        message_content = message_content + '\n\n' + message + "\n"
+                    # Check active_requests to make sure that are no more than 1k active requests at a single time
+                    self.logger.info("Checking system:active requests for too many requests")
+                    message = self.check_active_requests(nodes=n1ql_nodes,
+                                                                         port=port,
+                                                                         logger=logger)
 
-                if not message == '':
-                    message_content = message_content + '\n\n' + str(n1ql_nodes) + " : query"
-                    message_content = message_content + '\n\n' + message + "\n"
+                    if not message == '':
+                        message_content = message_content + '\n\n' + str(n1ql_nodes) + " : query"
+                        message_content = message_content + '\n\n' + message + "\n"
 
-            to_break, iter_count = self._task_sleep(loop_interval=loop_interval,
-                                                                     iter_count=iter_count,
-                                                                     message_content=message_content,
-                                                                     task_num=task_num,
-                                                                     logger=logger,
-                                                                     dc_name=self.task_num_name_map[task_num])
-            if to_break is False or self.run_one:
-                logger.info("Stopping {0}".format(self.task_num_name_map[task_num]))
-                break
+                to_break, iter_count = self._task_sleep(loop_interval=loop_interval,
+                                                                         iter_count=iter_count,
+                                                                         message_content=message_content,
+                                                                         task_num=task_num,
+                                                                         logger=logger,
+                                                                         dc_name=self.task_num_name_map[task_num])
+                if to_break is False or self.run_one:
+                    logger.info("Stopping {0}".format(self.task_num_name_map[task_num]))
+                    break
+        except Exception as e:
+            logger.error(str(e))
 
     def _task_init(self, task_num, name, sys_name):
         self.task_num_name_map[task_num] = name
@@ -434,11 +483,24 @@ class EagleEye:
         if message_content != "" or message_content != []:
             self.has_changed = True
 
+        # do not add the message content you already emailed to the user
+        if iter_count == 1 and self.messages[task_num]['type'] == 'static' and message_content != "":
+            logger.info("Sending first iteration email")
+            message_sub = f"Node: {self.master_node} : {self.task_num_name_map[task_num]} First Iteration Complete"
+            try:
+                self.send_email(message_sub=message_sub, message_content=message_content,
+                            email_recipients=self.email_list,
+                            logger=self.logger)
+                logger.info("First iteration email success")
+            except Exception as e:
+                logger.error(str(e))
         # add the message content from the iteration
         if type(message_content) is str:
             self.messages[task_num]["data"] += message_content
         else:
             self.messages[task_num]["data"].extend(message_content)
+
+
 
         iter_count += 1
         self._sleep(loop_interval)
