@@ -31,4 +31,8 @@ class Queries:
     # upload to supportal query
     get_logs = "SELECT e.logs.data FROM `eagle-eye` e WHERE e.id = '{0}' AND e.iteration = {1}"
 
-    update_snapshot_url = "UPDATE `eagle-eye` e USE KEYS '{0}_{1}' SET e.logs.snapshot_url = '{2}'"
+    update_snapshot_url = "UPDATE `eagle-eye` e SET e.logs.snapshot_url = '{0}' WHERE e.id = '{1}' AND e.iteration = {2}"
+
+    update_snapshot_progress_status = "UPDATE `eagle-eye` e SET e.logs.progress = '{0}' WHERE e.id = '{1}' AND e.iteration = {2}"
+
+    update_snapshot_progress_error = "UPDATE `eagle-eye` e SET e.logs.error = '{0}' WHERE e.id = '{1}' AND e.iteration = {2}"

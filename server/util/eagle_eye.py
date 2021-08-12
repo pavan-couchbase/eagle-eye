@@ -76,6 +76,7 @@ class EagleEye:
         doc_to_insert = {
             "id": self.job_id,
             "iteration": alert_iter,
+            "master_node": self.master_node,
             "cluster_name": self.cluster_name,
             "build": self.build
         }
@@ -252,16 +253,23 @@ class EagleEye:
                                         occurences,
                                         keyword,
                                         node))
-                                message_content = message_content + '\n\n' + node + " : " + str(component["component"])
+                                possible_message = '\n\n' + node + " : " + str(component["component"])
+                                #message_content = message_content + '\n\n' + node + " : " + str(component["component"])
                                 if self.print_all_logs is True or last_scan_timestamp == "":
                                     logger.debug('\n'.join(output))
                                     try:
-                                        message_content = message_content + '\n' + '\n'.join(output)
+                                        #message_content = message_content + '\n' + '\n'.join(output)
+                                        possible_message += '\n' + '\n'.join(output)
                                     except UnicodeDecodeError as e:
                                         logger.warn(str(e))
-                                        message_content = message_content + '\n' + '\n'.join(output).decode("utf-8")
+                                        #message_content = message_content + '\n' + '\n'.join(output).decode("utf-8")
+                                        possible_message += '\n' + '\n'.join(output).decode("utf-8")
                                 else:
-                                    message_content = self.print_output(output, last_scan_timestamp, message_content, logger)
+                                    #message_content = self.print_output(output, last_scan_timestamp, message_content, logger)
+                                    possible_message += self.print_output(output, last_scan_timestamp, possible_message, logger)
+
+                                if possible_message != '\n\n' + node + " : " + str(component["component"]):
+                                    message_content += possible_message
                                 # for i in range(len(output)):
                                 #    self.logger.info(output[i])
                             total_occurences += occurences
@@ -387,13 +395,17 @@ class EagleEye:
                                                                       str(nodes)))
 
                     for node in nodes:
-                        message_content = message_content + '\n\n' + node + " : " + str(component["component"])
+                        possible_message = '\n\n' + node + " : " + str(component["component"])
+                        # message_content = message_content + '\n\n' + node + " : " + str(component["component"])
                         try:
-                            fin_neg_stat, message_content = self.check_stats_api(node, component, message_content, logger)
+                            fin_neg_stat, possible_message = self.check_stats_api(node, component, possible_message, logger)
                             if fin_neg_stat.__len__() != 0:
                                 self.should_cbcollect = True
                         except Exception as e:
                             logger.info("Found an exception {0}".format(e))
+
+                        if possible_message != '\n\n' + node + " : " + str(component["component"]):
+                            message_content += possible_message
 
                 to_break, iter_count = self._task_sleep(loop_interval=loop_interval,
                                                                          iter_count=iter_count,
@@ -702,7 +714,8 @@ class EagleEye:
             else:
                 neg_stat = None
             logger.info(str(stat) + " : " + str(neg_stat))
-            message_content = message_content + '\n' + str(stat) + " : " + str(neg_stat)
+            if neg_stat is not None:
+                message_content = message_content + '\n' + str(stat) + " : " + str(neg_stat)
 
         return fin_neg_stat, message_content
 

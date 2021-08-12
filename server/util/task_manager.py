@@ -1,4 +1,5 @@
 import time
+from datetime import timedelta
 from .eagle_eye import EagleEye
 from concurrent.futures import ThreadPoolExecutor
 from constants.defaults import Default
@@ -113,7 +114,7 @@ class TaskManager:
             "masternode": self.master_node,
             "jobId": self.job_id,
             "alert_freq": self.alert_interval,
-            "time_running": time.time() - self.start_time,
+            "time_running": str(timedelta(seconds=(time.time() - self.start_time))),
             "running_tasks": self.tasks,
             "alert_iter": self.alert_iter
         }

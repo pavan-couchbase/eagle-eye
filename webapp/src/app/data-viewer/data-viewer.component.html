@@ -25,8 +25,10 @@
         </div>
         <div *ngIf="dc['type'] == 'logs'">
           <p *ngFor="let link of dc['data']" class="static-data">url: <a href="{{link}}">{{link}}</a></p>
+          <p *ngIf="dc['progress']">{{dc['progress']}}</p>
+          <p *ngIf="dc['error']">Upload Error: {{dc['error']}}</p>
           <p *ngIf="dc['snapshot_url']">Supportal Snapshot URL: <a href="{{dc['snapshot_url']}}">{{dc['snapshot_url']}}</a></p>
-          <button (click)="onClickUploadSupportal(jobId, iter.iteration)" [disabled]="dc['snapshot_url'] != undefined">Upload to Supportal</button>
+          <button (click)="onClickUploadSupportal(jobId, iter.iteration)" [disabled]="dc['snapshot_url'] != undefined || dc['progress']">Upload to Supportal</button>
           <button (click)="onClickDownloadAll(iter)">Download All</button>
         </div>
         <div *ngIf="dc['type'] == 'csummary'">

@@ -15,4 +15,4 @@ WORKDIR ./webapp
 
 RUN npm install
 EXPOSE 4200
-CMD ng serve --host 0.0.0.0 --configuration production
+CMD ng serve --host 0.0.0.0 --configuration production --disable-host-check

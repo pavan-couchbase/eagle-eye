@@ -1,13 +1,15 @@
-from couchbase.cluster import Cluster, ClusterOptions
+from couchbase.cluster import Cluster, ClusterOptions, ClusterTimeoutOptions
 from couchbase_core.cluster import PasswordAuthenticator
 from couchbase.exceptions import DocumentExistsException
 from constants.queries import Queries
+from datetime import timedelta
+
 
 class CBConnection:
     def __init__(self, username, password, host):
-        self.cluster = Cluster("couchbase://{0}".format(host), ClusterOptions(
-            PasswordAuthenticator(username, password)
-        ))
+        timeout_options = ClusterTimeoutOptions(kv_timeout=timedelta(seconds=300), query_timeout=timedelta(seconds=360))
+        options = ClusterOptions(PasswordAuthenticator(username, password), timeout_options=timeout_options)
+        self.cluster = Cluster("couchbase://{0}".format(host), options=options)
 
         self.cb = self.cluster.bucket("eagle-eye")
         self.cb_coll = self.cb.default_collection()
@@ -28,9 +30,23 @@ class CBConnection:
 
         return result_arr[0]
 
-    def update_snapshot_url(self, id, iteration, snap_url):
-        query = Queries.update_snapshot_url.format(id, iteration, snap_url)
+    def update_snapshot_url(self, job_id, iteration, snap_url):
+        query = Queries.update_snapshot_url.format(snap_url, job_id, iteration)
         res = self.cb.query(query)
+        if res.meta['status'] == 'success':
+            print("Success Changed")
+
+    def update_snapshot_status(self, job_id, iteration, status):
+        query = Queries.update_snapshot_progress_status.format(status, job_id, iteration)
+        res = self.cb.query(query)
+        if res.meta['status'] == 'success':
+            print("Success Changed")
+
+    def update_snapshot_error(self, job_id, iteration, error):
+        query = Queries.update_snapshot_progress_error.format(error, job_id, iteration)
+        res = self.cb.query(query)
+        if res.meta['status'] == 'success':
+            print("Success Changed")
 
     def get_data(self, id=None, cluster_name=None, build=None, iter_num=None, dc_name=None):
         # logic to run the correct query

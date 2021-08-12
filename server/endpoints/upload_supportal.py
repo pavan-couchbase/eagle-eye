@@ -20,6 +20,7 @@ class UploadSupportal(Resource):
         args = parser.parse_args()
 
         res = self.cb.upload_supportal(args['id'], args['iteration'])
+        self.cb.update_snapshot_status(args['id'], args['iteration'], "Upload Started...Please wait (could take up to 15-25 min)")
 
         jobId = args['id']
         # download the files
@@ -27,6 +28,7 @@ class UploadSupportal(Resource):
             try:
                 subprocess.run(["wget", url, "-P", "./server/supportal/{0}".format(jobId)], capture_output=False)
             except Exception as e:
+                self.cb.update_snapshot_error(jobId, args['iteration'], str(e))
                 return {"Msg": str(e)}, 400
 
         # upload the files
@@ -34,9 +36,11 @@ class UploadSupportal(Resource):
             try:
                 subprocess.run(['curl', '-T', './server/supportal/{0}/{1}'.format(jobId, filename), 'https://cb-engineering.s3.amazonaws.com/cb-qe-eagle-eye/', '-#', '-o', '/dev/null'])
             except Exception as e:
+                self.cb.update_snapshot_error(jobId, args['iteration'], str(e))
                 return {"Msg": str(e)}, 400
 
         shutil.rmtree("./server/supportal/{0}".format(jobId))
+        self.cb.update_snapshot_status(args['id'], args['iteration'], "Upload Finished. Probing for Snapshot URL")
 
         # probe
         probing = True
@@ -45,6 +49,7 @@ class UploadSupportal(Resource):
             response = requests.get('https://supportal.couchbase.com/api/snapshots/CB%20QE%20Eagle%20Eye')
 
             if response.status_code != 200:
+                self.cb.update_snapshot_error(jobId, args['iteration'], "Error accessing supportal snapshots API")
                 return {"Msg": "Error accessing supportal snapshots API"}, 400
 
             content = json.loads(response.content)
@@ -53,10 +58,12 @@ class UploadSupportal(Resource):
 
             if prob_res != "":
                 self.cb.update_snapshot_url(args['id'], args['iteration'], prob_res)
+                self.cb.update_snapshot_status(args['id'], args['iteration'], "Snapshot URL Available")
                 return {"Msg": "success"}, 200
 
             time.sleep(300)
 
+        self.cb.update_snapshot_error(jobId, args['iteration'], "No snapshot found in 30 minutes")
         return {"Msg": "No snapshot found in 30 minutes"}, 400
 
     def probe_snapshots(self, urls, snapshots):
