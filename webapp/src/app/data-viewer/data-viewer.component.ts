@@ -27,6 +27,7 @@ export class DataViewerComponent implements OnInit {
   jobId: any;
   build: any;
   clustername: any;
+  master_node: any;
 
   constructor(private store: Store<any>) {
   }
@@ -46,6 +47,7 @@ export class DataViewerComponent implements OnInit {
       this.jobId = arrayForSort[0]['id'];
       this.build = arrayForSort[0]['build'];
       this.clustername = arrayForSort[0]['cluster_name'];
+      this.master_node = arrayForSort[0]['master_node'];
     }
 
     for (let doc of arrayForSort) {

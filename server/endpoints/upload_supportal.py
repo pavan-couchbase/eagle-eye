@@ -23,6 +23,8 @@ class UploadSupportal(Resource):
         self.cb.update_snapshot_status(args['id'], args['iteration'], "Upload Started...Please wait (could take up to 15-25 min)")
 
         jobId = args['id']
+        os.makedirs("./server/supportal/{0}".format(jobId))
+
         # download the files
         for url in res['data']:
             try:

@@ -11,3 +11,7 @@ mat-divider {
   border-top: 1px solid blue;
   border-bottom: 1px solid blue;
 }
+
+.status-text {
+  white-space: pre-wrap;
+}

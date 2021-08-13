@@ -1,7 +1,7 @@
 FROM centos:7
 RUN yum update -y
 RUN yum install -y python3
-RUN yum install git wget make gcc bzip2 zlib-devel bzip2-devel openssl-devel ncurses-devel sqlite-devel readline-devel tk-devel gdbm-devel db4-devel libpcap-devel xz-devel readline-devel sqlite sqlite-devel libffi-devel gcc-c++ python-devel python-pip -y
+RUN yum install git sendmail wget make gcc bzip2 zlib-devel bzip2-devel openssl-devel ncurses-devel sqlite-devel readline-devel tk-devel gdbm-devel db4-devel libpcap-devel xz-devel readline-devel sqlite sqlite-devel libffi-devel gcc-c++ python-devel python-pip -y
 WORKDIR /root
 RUN wget https://www.python.org/ftp/python/3.9.5/Python-3.9.5.tgz
 RUN tar -xvf Python-3.9.5.tgz
