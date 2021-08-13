@@ -28,6 +28,7 @@ import {MatPaginatorModule} from "@angular/material/paginator";
 import {NgxChartsModule} from "@swimlane/ngx-charts";
 import { ServerStatusComponent } from './server-status/server-status.component';
 import {MatCheckboxModule} from "@angular/material/checkbox";
+import {RouterModule} from "@angular/router";
 
 @NgModule({
   declarations: [
@@ -57,7 +58,10 @@ import {MatCheckboxModule} from "@angular/material/checkbox";
     MatProgressBarModule,
     MatPaginatorModule,
     NgxChartsModule,
-    MatCheckboxModule
+    MatCheckboxModule,
+    RouterModule.forRoot([
+      {path: '', component: DashboardComponent}
+    ])
   ],
   providers: [EEService],
   bootstrap: [AppComponent]

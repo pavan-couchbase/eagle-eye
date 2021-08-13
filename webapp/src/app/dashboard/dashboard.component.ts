@@ -2,6 +2,9 @@ import { Component, OnInit } from '@angular/core';
 import {Store} from "@ngrx/store";
 import {GetData} from "../shared/actions/ee.actions";
 import {Observable} from "rxjs";
+import {ActivatedRoute} from "@angular/router";
+import {map, switchMap} from "rxjs/operators";
+import {query} from "@angular/animations";
 
 @Component({
   selector: 'dashboard',
@@ -24,7 +27,7 @@ export class DashboardComponent implements OnInit {
   hasResults: boolean = false;
   getDataLoading: boolean = false;
 
-  constructor(private store: Store<any>) {
+  constructor(private store: Store<any>, private route: ActivatedRoute) {
     this.getDataSuccess$ = this.store.select(s => s.getData.data);
     this.getDataSuccess$.subscribe((data: any) => {
       if (data) {
@@ -53,6 +56,12 @@ export class DashboardComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.route.queryParams.subscribe(queryParams => {
+      if (queryParams['id']) {
+        this.jobId = queryParams['id']
+        this.onClickSearch()
+      }
+    })
   }
 
   onClickSearch() {

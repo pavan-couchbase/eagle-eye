@@ -59,8 +59,10 @@ export class DataViewerComponent implements OnInit {
       };
       this.timeseries_data[doc['iteration']] = []
       let collected = []
+      let iter_data_collectors = []
       for (let key of Object.keys(doc)) {
         if (key in this.data_collectors) {
+          iter_data_collectors.push(key)
           let dc_doc = Object.assign({}, doc[key], {'name': key})
 
           if (doc[key]['type'] == 'time_series') {
@@ -95,6 +97,7 @@ export class DataViewerComponent implements OnInit {
 
         }
       }
+      to_add['data_collectors'] = iter_data_collectors;
       to_add['collected'] = collected;
       this.parsed_data.push(to_add);
     }
