@@ -4,7 +4,7 @@ import json
 import uuid
 from util.task import Task
 from util.task_manager import TaskManager
-from util.util import get_parameters, print_queue, check_unique_host
+from util.util import get_parameters, print_queue, check_unique_host, check_unique_cluster_name
 from constants.defaults import Default
 
 
@@ -44,6 +44,9 @@ class Start(Resource):
 
         if check_unique_host(args['host'], self.task_managers):
             return {"Msg": "Host already running data collectors"}, 400
+
+        if check_unique_cluster_name(args['clustername'], self.task_managers):
+            return {"Msg": "Cluster name already running"}, 400
 
         # Read configuration file
         if args['configfile'] is not None:

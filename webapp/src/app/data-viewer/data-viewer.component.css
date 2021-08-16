@@ -8,7 +8,8 @@
 }
 
 .job-header > * {
-  padding-right: 20px;
+  padding-left: 10px;
+  padding-right: 10px;
 }
 
 .healthy {
@@ -17,4 +18,8 @@
 
 .not-healthy {
   color: red;
+}
+
+.present-dc {
+  float: left;
 }

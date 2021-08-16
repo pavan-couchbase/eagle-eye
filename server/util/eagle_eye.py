@@ -73,105 +73,108 @@ class EagleEye:
         self.running = False
 
     def on_alert(self, alert_iter):
-        doc_to_insert = {
-            "id": self.job_id,
-            "iteration": alert_iter,
-            "master_node": self.master_node,
-            "cluster_name": self.cluster_name,
-            "build": self.build
-        }
+        try:
+            doc_to_insert = {
+                "id": self.job_id,
+                "iteration": alert_iter,
+                "master_node": self.master_node,
+                "cluster_name": self.cluster_name,
+                "build": self.build
+            }
 
-        email_text = ""
+            email_text = ""
 
-        # for each running task, create the message subject line and send the email with the correct message content
-        for k, v in self.messages.items():
-            # if there is no completed iterations yet, do not alert
-            if v['data'] == "" or v['data'] == []:
-                continue
+            # for each running task, create the message subject line and send the email with the correct message content
+            for k, v in self.messages.items():
+                # if there is no completed iterations yet, do not alert
+                if v['data'] == "" or v['data'] == []:
+                    continue
 
-            # add the data to the document that will be inserted
-            doc_to_insert[self.system_task_num_name_map[k]] = v
+                # add the data to the document that will be inserted
+                doc_to_insert[self.system_task_num_name_map[k]] = v
 
-            # we can utilize less dicts if we create a log_parser class to keep track of all the iterations and messages
-            if v['type'] == 'time_series':
-                if self.collect_cpu and self.system_task_num_name_map[k] == 'cpu_collection':
+                # we can utilize less dicts if we create a log_parser class to keep track of all the iterations and messages
+                if v['type'] == 'time_series':
+                    if self.collect_cpu and self.system_task_num_name_map[k] == 'cpu_collection':
+                        email_text += "\n" + "=============================" + self.task_num_name_map[k] + "============================= \n"
+                        email_text += v['data']
+                        email_text += "\n"
+                    if self.collect_mem and self.system_task_num_name_map[k] == 'mem_collection':
+                        email_text += "\n" + "=============================" + self.task_num_name_map[k] + "============================= \n"
+                        email_text += v['data']
+                        email_text += "\n"
+                else:
                     email_text += "\n" + "=============================" + self.task_num_name_map[k] + "============================= \n"
                     email_text += v['data']
                     email_text += "\n"
-                if self.collect_mem and self.system_task_num_name_map[k] == 'mem_collection':
-                    email_text += "\n" + "=============================" + self.task_num_name_map[k] + "============================= \n"
-                    email_text += v['data']
-                    email_text += "\n"
-            else:
-                email_text += "\n" + "=============================" + self.task_num_name_map[k] + "============================= \n"
-                email_text += v['data']
+
+                # we need to clear the stored results every alert interval
+                if type(self.messages[k]['data']) is str:
+                    self.messages[k] = {"type": "static", "data": ""}
+                elif type(self.messages[k]['data']) is list:
+                    self.messages[k] = {"type": "time_series", "data": []}
+
+            self.node_map = self.get_services_map(self.master_node, self.logger)
+
+            doc_to_insert['cluster_summary'] = {"type": "csummary", "data": []}
+
+            email_text += "\n============================= Cluster Summary =============================\n"
+            for node in self.node_map:
+                doc_to_insert['cluster_summary']["data"].append({
+                    "hostname": node['hostname'],
+                    "status": node['status'],
+                    "services": node['services']
+                })
+
+                email_text += f"{node['hostname']} ({node['status']}) : {node['services']}"
                 email_text += "\n"
 
-            # we need to clear the stored results every alert interval
-            if type(self.messages[k]['data']) is str:
-                self.messages[k] = {"type": "static", "data": ""}
-            elif type(self.messages[k]['data']) is list:
-                self.messages[k] = {"type": "time_series", "data": []}
 
-        self.node_map = self.get_services_map(self.master_node, self.logger)
+            # see if we need to collect logs
+            start_time = time.time()
+            self.collected = False
+            log_content = ""
 
-        doc_to_insert['cluster_summary'] = {"type": "csummary", "data": []}
+            self.alert_logger.info("Starting Log Collection at {0}".format(str(datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))))
+            try:
+                log_content = self.collect_logs(self.master_node, start_time, self.alert_logger)
+            except Exception as e:
+                self.alert_logger.error(str(e))
+            self.alert_logger.info("Log Collection Complete")
 
-        email_text += "\n============================= Cluster Summary =============================\n"
-        for node in self.node_map:
-            doc_to_insert['cluster_summary']["data"].append({
-                "hostname": node['hostname'],
-                "status": node['status'],
-                "services": node['services']
-            })
+            if log_content != "":
+                email_text += "\n" + "=============================" + "Logs =============================\n"
+                email_text += log_content
 
-            email_text += f"{node['hostname']} ({node['status']}) : {node['services']}"
-            email_text += "\n"
+                # if there are logs to add, add to document and tell eagle-eye that we should wait to collect again
+                doc_to_insert['logs'] = {"type": "logs", "data": []}
+                for line in log_content.split("\n"):
+                    if line != "" and line != "cbcollect logs: ":
+                        doc_to_insert['logs']['data'].append(line.split(" : ")[1])
+                self.should_cbcollect = False
 
+            # send consolidated emails
+            message_sub = f"Node: {self.master_node} Cluster: {self.cluster_name} : iteration number {alert_iter}"
+            self.alert_logger.info("Sending Email: {0}".format(message_sub))
+            try:
+                self.send_email(message_sub=message_sub, message_content=email_text, email_recipients=self.email_list,
+                                logger=self.alert_logger)
+                self.alert_logger.info("Email Sent Success")
+            except Exception as e:
+                self.alert_logger.error("Email Error: " + str(e))
 
-        # see if we need to collect logs
-        start_time = time.time()
-        self.collected = False
-        log_content = ""
+            self.alert_logger.info("Starting insert")
+            # call write to CouchbaseDB
+            try:
+                self.update_cbinstance(doc_to_insert, self.alert_logger)
+            except Exception as e:
+                self.alert_logger.error(str(e))
 
-        self.alert_logger.info("Starting Log Collection at {0}".format(str(datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))))
-        try:
-            log_content = self.collect_logs(self.master_node, start_time, self.alert_logger)
+            # after we have writen, assume nothing has changed until we check again
+            self.has_changed = False
+            self.alert_logger.info("Alert iteration {0} finished".format(alert_iter))
         except Exception as e:
             self.alert_logger.error(str(e))
-        self.alert_logger.info("Log Collection Complete")
-
-        if log_content != "":
-            email_text += "\n" + "=============================" + "Logs =============================\n"
-            email_text += log_content
-
-            # if there are logs to add, add to document and tell eagle-eye that we should wait to collect again
-            doc_to_insert['logs'] = {"type": "logs", "data": []}
-            for line in log_content.split("\n"):
-                if line != "" and line != "cbcollect logs: ":
-                    doc_to_insert['logs']['data'].append(line.split(" : ")[1])
-            self.should_cbcollect = False
-
-        # send consolidated emails
-        message_sub = f"Node: {self.master_node} Cluster: {self.cluster_name} : iteration number {alert_iter}"
-        self.alert_logger.info("Sending Email: {0}".format(message_sub))
-        try:
-            self.send_email(message_sub=message_sub, message_content=email_text, email_recipients=self.email_list,
-                            logger=self.alert_logger)
-            self.alert_logger.info("Email Sent Success")
-        except Exception as e:
-            self.alert_logger.error("Email Error: " + str(e))
-
-        self.alert_logger.info("Starting insert")
-        # call write to CouchbaseDB
-        try:
-            self.update_cbinstance(doc_to_insert, self.alert_logger)
-        except Exception as e:
-            self.alert_logger.error(str(e))
-
-        # after we have writen, assume nothing has changed until we check again
-        self.has_changed = False
-        self.alert_logger.info("Alert iteration {0} finished".format(alert_iter))
 
     ######################### TASK FUNCTIONS #########################
     def log_parser(self, loop_interval, task_num, parameters):
@@ -266,7 +269,7 @@ class EagleEye:
                                         possible_message += '\n' + '\n'.join(output).decode("utf-8")
                                 else:
                                     #message_content = self.print_output(output, last_scan_timestamp, message_content, logger)
-                                    possible_message += self.print_output(output, last_scan_timestamp, possible_message, logger)
+                                    possible_message += self.print_output(output, last_scan_timestamp, logger)
 
                                 if possible_message != '\n\n' + node + " : " + str(component["component"]):
                                     message_content += possible_message
@@ -1048,10 +1051,11 @@ class EagleEye:
             time.sleep(3)
             count += 1
 
-    def print_output(self, output, last_scan_timestamp, message_content, logger,
+    def print_output(self, output, last_scan_timestamp, logger,
                      ignore_list=["Port exited with status 0", "Fatal:false",
                                   "HyracksDataException: HYR0115: Local network error",
                                   "No such file or directory"]):
+        message_content = ""
         for line in output:
             match = re.search(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}', line)
             if match:

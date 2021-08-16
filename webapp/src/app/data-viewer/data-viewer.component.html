@@ -1,11 +1,11 @@
 <div class="job-header">
-  <p>Job ID: {{jobId}}</p>
-  <p>Cluster Name: {{clustername}}</p>
-  <p>Build: {{build}}</p>
-  <p>Host: {{master_node}}</p>
+  <p><b>Job ID:</b> {{jobId}}</p>
+  <p><b>Cluster Name:</b> {{clustername}}</p>
+  <p><b>Build:</b> {{build}}</p>
+  <p><b>Host:</b> {{master_node}}</p>
 </div>
 <mat-expansion-panel *ngFor="let iter of parsed_data">
-  <mat-expansion-panel-header>Iteration {{iter.iteration}} ({{iter.data_collectors.join(', ')}})</mat-expansion-panel-header>
+  <mat-expansion-panel-header>Iteration {{iter.iteration}} : ({{iter.data_collectors.join(', ')}})</mat-expansion-panel-header>
   <section>
     <mat-tab-group mat-stretch-tabs>
       <mat-tab *ngFor="let dc of iter.collected" [label]="dc['name']">

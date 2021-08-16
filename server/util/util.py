@@ -38,6 +38,11 @@ def check_unique_host(host, task_managers):
             return True
     return False
 
+def check_unique_cluster_name(cluster_name, task_managers):
+    for k, v in task_managers.items():
+        if v.cluster_name == cluster_name:
+            return True
+    return False
 
 def get_parameters(config_dict, default=['loop_interval']):
     parameters = []
