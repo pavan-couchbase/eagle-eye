@@ -1,0 +1,6 @@
+{
+  "failed_query_check": {
+    "loop_interval": 10,
+    "port": "8093"
+  }
+}
