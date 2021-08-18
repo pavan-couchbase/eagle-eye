@@ -103,7 +103,8 @@ export class DataViewerComponent implements OnInit {
     }
   }
 
-  onClickUploadSupportal(id: string, iteration: number) {
+  onClickUploadSupportal(id: string, iteration: number, event: MouseEvent) {
+    (event.target as HTMLButtonElement).disabled = true;
     this.store.dispatch(UploadSupportal({request: {jobId: id, iter_num: iteration}}))
   }
 

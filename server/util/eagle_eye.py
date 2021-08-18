@@ -9,6 +9,7 @@ import base64
 import traceback
 import socket
 import ast
+import pytz
 from couchbase.cluster import Cluster, PasswordAuthenticator
 from datetime import datetime, timedelta
 from collections import Mapping, Sequence, Set, deque
@@ -69,6 +70,8 @@ class EagleEye:
         self.collect_mem = False
         self.collect_cpu = False
 
+        self.tz = pytz.timezone('America/Los_Angeles')
+
     def stop(self):
         self.running = False
 
@@ -97,11 +100,11 @@ class EagleEye:
                 if v['type'] == 'time_series':
                     if self.collect_cpu and self.system_task_num_name_map[k] == 'cpu_collection':
                         email_text += "\n" + "=============================" + self.task_num_name_map[k] + "============================= \n"
-                        email_text += v['data']
+                        email_text += str(v['data'])
                         email_text += "\n"
                     if self.collect_mem and self.system_task_num_name_map[k] == 'mem_collection':
                         email_text += "\n" + "=============================" + self.task_num_name_map[k] + "============================= \n"
-                        email_text += v['data']
+                        email_text += str(v['data'])
                         email_text += "\n"
                 else:
                     email_text += "\n" + "=============================" + self.task_num_name_map[k] + "============================= \n"
@@ -176,6 +179,7 @@ class EagleEye:
         except Exception as e:
             self.alert_logger.error(str(e))
 
+
     ######################### TASK FUNCTIONS #########################
     def log_parser(self, loop_interval, task_num, parameters):
         # parse parameters
@@ -187,7 +191,7 @@ class EagleEye:
 
         paramiko.util.log_to_file('{0}/paramiko.log'.format(task_dir))
 
-        timestamp = str(datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))
+        timestamp = str(datetime.now(tz=self.tz).strftime('%Y-%m-%dT%H:%M:%S'))
 
         keyword_counts = {}
         keyword_counts["timestamp"] = timestamp
@@ -288,7 +292,7 @@ class EagleEye:
                             if total_occurences > 0:
                                 self.should_cbcollect = True
 
-                last_scan_timestamp = datetime.now() - timedelta(minutes=10.0)
+                last_scan_timestamp = (datetime.now(tz=self.tz) - timedelta(minutes=10.0)).strftime("%Y-%m-%d %H:%M:%S.%f")
                 logger.info("Last scan timestamp :" + str(last_scan_timestamp))
                 keyword_counts["last_scan_timestamp"] = str(last_scan_timestamp)
 
@@ -305,6 +309,7 @@ class EagleEye:
                     break
         except Exception as e:
             logger.error(str(e))
+            self._task_error(logger, str(e), task_num)
 
     def cpu_collection(self, loop_interval, task_num, parameters):
         # parse parameters
@@ -319,7 +324,7 @@ class EagleEye:
                 # cpu check and collect
                 usages = []
                 for node in self.node_map:
-                    usages.append({"node": node['hostname'], "timestamp": str(datetime.now().strftime('%Y-%m-%dT%H:%M:%S')), "usage": node['cpuUsage']})
+                    usages.append({"node": node['hostname'], "timestamp": str(datetime.now(tz=self.tz).strftime('%Y-%m-%dT%H:%M:%S')), "usage": node['cpuUsage']})
                     self.has_changed = True
 
                     if node["cpuUsage"] > cpu_threshold:
@@ -338,6 +343,7 @@ class EagleEye:
                     break
         except Exception as e:
             logger.error(str(e))
+            self._task_error(logger, str(e), task_num)
 
     def mem_collection(self, loop_interval, task_num, parameters):
         # parse parameters
@@ -352,7 +358,7 @@ class EagleEye:
                 # cpu check and collect
                 usages = []
                 for node in self.node_map:
-                    usages.append({"node": node['hostname'], "timestamp": str(datetime.now().strftime('%Y-%m-%dT%H:%M:%S')), "usage": node['memUsage']})
+                    usages.append({"node": node['hostname'], "timestamp": str(datetime.now(tz=self.tz).strftime('%Y-%m-%dT%H:%M:%S')), "usage": node['memUsage']})
                     self.has_changed = True
 
                     if node["memUsage"] > mem_threshold:
@@ -375,6 +381,7 @@ class EagleEye:
                     break
         except Exception as e:
             logger.error(str(e))
+            self._task_error(logger, str(e), task_num)
 
     def neg_stat_check(self, loop_interval, task_num, parameters):
         # parse parameters
@@ -421,6 +428,7 @@ class EagleEye:
                     break
         except Exception as e:
             logger.error(str(e))
+            self._task_error(logger, str(e), task_num)
 
     def failed_query_check(self, loop_interval, task_num, parameters):
         # parse parameters
@@ -476,6 +484,7 @@ class EagleEye:
                     break
         except Exception as e:
             logger.error(str(e))
+            self._task_error(logger, str(e), task_num)
 
     def _task_init(self, task_num, name, sys_name):
         self.task_num_name_map[task_num] = name
@@ -531,6 +540,14 @@ class EagleEye:
             if not self.running:
                 break
             time.sleep(1)
+
+    def _task_error(self, logger, e, task_num):
+        traceback_msg = traceback.print_exc()
+        logger.error(traceback_msg)
+
+        message_sub = "Error Raised in {0}: {1}".format(self.task_num_name_map[task_num], str(e))
+        self.send_email(message_sub=message_sub, message_content=traceback_msg, email_recipients=self.email_list, logger=logger)
+
     ######################### HELPER FUNCTIONS #########################
     def collect_logs(self, master_node, start_time, logger):
         message_content = ""
@@ -1060,6 +1077,8 @@ class EagleEye:
             match = re.search(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}', line)
             if match:
                 timestamp_in_log = datetime.strptime(match.group(), '%Y-%m-%dT%H:%M:%S')
+                timestamp_in_log = self.tz.localize(timestamp_in_log)
+                timestamp_in_log = datetime.strptime(timestamp_in_log.strftime("%Y-%m-%d %H:%M:%S.%f"), "%Y-%m-%d %H:%M:%S.%f")
                 if timestamp_in_log >= last_scan_timestamp and self.check_op_in_ignorelist(line):
                     logger.debug(line)
                     message_content = message_content + '\n' + line
