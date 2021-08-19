@@ -16,7 +16,7 @@
             "component": "memcached",
             "logfiles": "memcached.log.*",
             "services": "all",
-            "keywords": ["CRITICAL", "Basic\\s[a-zA-Z]\\{10,\\}", "Menelaus-Auth-User:\\[", "exception occurred in runloop"],
+            "keywords": ["CRITICAL", "Basic\\s[a-zA-Z]\\{10,\\}", "Menelaus-Auth-User:\\[", "exception occurred in runloop", "Invalid packet header detected"],
             "ignore_keywords": null,
             "check_stats_api": false,
             "collect_dumps": false
@@ -112,7 +112,7 @@
             "logfiles": "query.log*",
             "services": "n1ql",
             "keywords": ["panic", "fatal", "Encounter planner error", "Basic\\s[a-zA-Z]\\{10,\\}",
-                         "Menelaus-Auth-User:\\["],
+                         "Menelaus-Auth-User:\\[", "invalid byte in chunk length"],
             "ignore_keywords": ["not available"],
             "check_stats_api": false,
             "collect_dumps": true,
