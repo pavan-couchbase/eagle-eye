@@ -38,7 +38,7 @@ class SysTestMon():
             "component": "memcached",
             "logfiles": "memcached.log.*",
             "services": "all",
-            "keywords": ["CRITICAL", "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\[", "exception occurred in runloop"],
+            "keywords": ["CRITICAL", "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\[", "exception occurred in runloop", "Invalid packet header detected"],
             "ignore_keywords": None,
             "check_stats_api": False,
             "collect_dumps": False
@@ -135,7 +135,7 @@ class SysTestMon():
             "logfiles": "query.log*",
             "services": "n1ql",
             "keywords": ["panic", "fatal", "Encounter planner error", "Basic\s[a-zA-Z]\{10,\}",
-                         "Menelaus-Auth-User:\["],
+                         "Menelaus-Auth-User:\[", "invalid byte in chunk length"],
             "ignore_keywords": ["not available"],
             "check_stats_api": False,
             "collect_dumps": True,
