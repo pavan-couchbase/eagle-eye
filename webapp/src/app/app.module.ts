@@ -29,6 +29,8 @@ import {NgxChartsModule} from "@swimlane/ngx-charts";
 import { ServerStatusComponent } from './server-status/server-status.component';
 import {MatCheckboxModule} from "@angular/material/checkbox";
 import {RouterModule} from "@angular/router";
+import {MatAutocompleteModule} from "@angular/material/autocomplete";
+import {MatOptionModule} from "@angular/material/core";
 
 @NgModule({
   declarations: [
@@ -40,29 +42,31 @@ import {RouterModule} from "@angular/router";
     DataViewerComponent,
     ServerStatusComponent,
   ],
-  imports: [
-    BrowserModule,
-    BrowserAnimationsModule,
-    HttpClientModule,
-    StoreModule.forRoot(reducers),
-    MatToolbarModule,
-    MatIconModule,
-    MatTabsModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatButtonModule,
-    MatDividerModule,
-    MatExpansionModule,
-    EffectsModule.forRoot([EagleEyeEffects]),
-    FormsModule,
-    MatProgressBarModule,
-    MatPaginatorModule,
-    NgxChartsModule,
-    MatCheckboxModule,
-    RouterModule.forRoot([
-      {path: '', component: DashboardComponent}
-    ])
-  ],
+    imports: [
+        BrowserModule,
+        BrowserAnimationsModule,
+        HttpClientModule,
+        StoreModule.forRoot(reducers),
+        MatToolbarModule,
+        MatIconModule,
+        MatTabsModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatButtonModule,
+        MatDividerModule,
+        MatExpansionModule,
+        EffectsModule.forRoot([EagleEyeEffects]),
+        FormsModule,
+        MatProgressBarModule,
+        MatPaginatorModule,
+        NgxChartsModule,
+        MatCheckboxModule,
+        RouterModule.forRoot([
+            {path: '', component: DashboardComponent}
+        ]),
+        MatAutocompleteModule,
+        MatOptionModule
+    ],
   providers: [EEService],
   bootstrap: [AppComponent]
 })

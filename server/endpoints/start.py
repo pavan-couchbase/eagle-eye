@@ -31,6 +31,7 @@ class Start(Resource):
 
         # Optional configuration
         parser.add_argument('configfile', required=False)
+        parser.add_argument('runall', required=False)
         parser.add_argument('restusername', required=False)
         parser.add_argument('restpassword', required=False)
         parser.add_argument('sshusername', required=False)
@@ -56,7 +57,10 @@ class Start(Resource):
                 return {"Error": "Issue loading config",
                         "Msg": str(e)}, 400
         else:
-            run_configuration = json.load(open('./server/config/default.json'))
+            if args['runall'] is not None:
+                run_configuration = json.load(open('./server/config/run_all.json'))
+            else:
+                run_configuration = json.load(open('./server/config/default.json'))
 
         # generate unique id
         job_id = uuid.uuid1()

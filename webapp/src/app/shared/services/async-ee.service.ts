@@ -16,6 +16,7 @@ export class EEService {
   start(host: string,
         clustername: string,
         configfile: any,
+        runAll: boolean,
         restusername: string, restpassword: string,
         sshusername: string, sshpassword: string,
         dockerhost: string,
@@ -31,6 +32,8 @@ export class EEService {
     params = params.set("clustername", clustername);
     if (configfile != {} && configfile)
       params = params.set("configfile", configfile);
+    if (runAll)
+      params = params.set("runall", runAll);
     if (restusername != "" && restpassword != "") {
       params = params.set("restusername", restusername);
       params = params.set("restpassword", restpassword);

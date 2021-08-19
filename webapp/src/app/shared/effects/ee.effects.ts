@@ -17,6 +17,7 @@ export class EagleEyeEffects {
         return this.eeService.start((action as any).request.host,
           (action as any).request.clustername,
           (action as any).request.configfile,
+          (action as any).request.runAll,
           (action as any).request.restusername, (action as any).request.restpassword,
           (action as any).request.sshusername, (action as any).request.sshpassword,
           (action as any).request.dockerhost,

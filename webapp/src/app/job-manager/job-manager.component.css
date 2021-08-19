@@ -15,3 +15,17 @@ mat-divider {
 .status-text {
   white-space: pre-wrap;
 }
+
+ul {
+  list-style-type: none;
+  margin-top: 4px;
+}
+
+.bottom-config {
+  display: flex;
+  flex-flow: column;
+}
+
+.email-input {
+  width: 80%;
+}

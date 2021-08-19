@@ -603,6 +603,7 @@ class EagleEye:
                         logger.error("Issue with cbcollect")
                         break
 
+        logger.info("====== FINISHED CBCOLLECT_INFO ======")
         return message_content
 
     def get_ssh_client(self, host, username, password):

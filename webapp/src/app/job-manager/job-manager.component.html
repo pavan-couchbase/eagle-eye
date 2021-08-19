@@ -19,8 +19,24 @@
           <mat-expansion-panel-header>Optional:</mat-expansion-panel-header>
           <section>
             <div>
-              <mat-label>Config File</mat-label>
-              <input type="file" (change)="uploadConfigFile($event)">
+              <mat-expansion-panel>
+                <mat-expansion-panel-header>Data Collectors Configuration</mat-expansion-panel-header>
+                <section>
+                  <div *ngFor="let dc of dc_schema">
+                    <span>
+                      <mat-checkbox [(ngModel)]="dc.run">
+                        <mat-label>{{dc.name}}</mat-label>
+                      </mat-checkbox>
+                    </span>
+                  </div>
+                  <mat-divider></mat-divider>
+                  <div class="bottom-config">
+                    <mat-checkbox [(ngModel)]="startRunAll">Run All</mat-checkbox>
+                    <mat-label>Config File: </mat-label>
+                  </div>
+                  <input type="file" (change)="uploadConfigFile($event)">
+                </section>
+              </mat-expansion-panel>
               <form>
                 <mat-form-field>
                   <mat-label>CB Host Username</mat-label>
@@ -52,9 +68,14 @@
                 </mat-form-field>
               </form>
               <form>
-                <mat-form-field>
+                <mat-form-field class="email-input">
                   <mat-label>Emails</mat-label>
-                  <input matInput [(ngModel)]="startEmails" [ngModelOptions]="{standalone: true}" placeholder="Enter Emails">
+                  <input matInput [(ngModel)]="startEmails" [ngModelOptions]="{standalone: true}" placeholder="Enter Emails" [matAutocomplete]="auto">
+                  <mat-autocomplete #auto="matAutocomplete">
+                    <mat-option *ngFor="let option of autoCompleteEmails" [value]="option.emails">
+                      {{option.name}}
+                    </mat-option>
+                  </mat-autocomplete>
                 </mat-form-field>
               </form>
               <form>

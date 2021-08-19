@@ -28,6 +28,7 @@ export interface StartRequest {
   host: string,
   clustername: string,
   configfile: any,
+  runAll: boolean,
   restusername: string, restpassword: string,
   sshusername: string, sshpassword: string,
   dockerhost: string,
