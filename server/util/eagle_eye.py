@@ -216,11 +216,13 @@ class EagleEye:
                     os.mkdir(dump_dir_name)
                 message_content = ""
 
-                if not self.node_map:
+                node_map = self.get_services_map(self.master_node, logger)
+
+                if not node_map:
                     continue
 
                 for component in config:
-                    nodes = self.find_nodes_with_service(self.node_map,
+                    nodes = self.find_nodes_with_service(node_map,
                                                          component["services"])
                     if len(nodes) == 0:
                         logger.info("No Nodes with {0} service : {1} ... SKIPPING".format(component["services"],
@@ -321,9 +323,11 @@ class EagleEye:
         iter_count = 1
         try:
             while self.running:
+                node_map = self.get_services_map(self.master_node, logger)
+
                 # cpu check and collect
                 usages = []
-                for node in self.node_map:
+                for node in node_map:
                     usages.append({"node": node['hostname'], "timestamp": str(datetime.now(tz=self.tz).strftime('%Y-%m-%dT%H:%M:%S')), "usage": node['cpuUsage']})
                     self.has_changed = True
 
@@ -355,9 +359,11 @@ class EagleEye:
         iter_count = 1
         try:
             while self.running:
+                node_map = self.get_services_map(self.master_node, logger)
+
                 # cpu check and collect
                 usages = []
-                for node in self.node_map:
+                for node in node_map:
                     usages.append({"node": node['hostname'], "timestamp": str(datetime.now(tz=self.tz).strftime('%Y-%m-%dT%H:%M:%S')), "usage": node['memUsage']})
                     self.has_changed = True
 
@@ -395,11 +401,13 @@ class EagleEye:
 
         try:
             while self.running:
-                if not self.node_map:
+                node_map = self.get_services_map(self.master_node, logger)
+
+                if not node_map:
                     continue
 
                 for component in config:
-                    nodes = self.find_nodes_with_service(self.node_map, component['services'])
+                    nodes = self.find_nodes_with_service(node_map, component['services'])
 
                     logger.info("Nodes with {0} service : {1}".format(component["services"],
                                                                       str(nodes)))
@@ -442,10 +450,12 @@ class EagleEye:
 
         try:
             while self.running:
-                if not self.node_map:
+                node_map = self.get_services_map(self.master_node, logger)
+
+                if not node_map:
                     continue
 
-                n1ql_nodes = self.find_nodes_with_service(self.node_map, "n1ql")
+                n1ql_nodes = self.find_nodes_with_service(node_map, "n1ql")
                 if n1ql_nodes:
                     # Check to make sure all nodes are healthy
                     self.logger.info("Checking if all query nodes are healthy")
@@ -542,6 +552,7 @@ class EagleEye:
             time.sleep(1)
 
     def _task_error(self, logger, e, task_num):
+        # traceback.print_exc() always returns NoneType, need to fix so that we get string of stacktrace and send to user
         traceback_msg = traceback.print_exc()
         logger.error(traceback_msg)
 
