@@ -84,7 +84,7 @@ class SysTestMon():
             "keywords": ["panic", "fatal", "authPassword", "\[ERRO\]", "Basic\s[a-zA-Z]\{10,\}",
                          "Menelaus-Auth-User:\["],
             "ignore_keywords": ["Fatal:false", "use of closed network connection",
-                                "Reschedule failed, failing request"],
+                                "Reschedule failed, failing request", "TLS handshake error", "cannot unmarshal object"],
             "check_stats_api": True,
             "stats_api_list": ["api/stats"],
             "port": "8094",
