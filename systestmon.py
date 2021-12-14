@@ -142,6 +142,15 @@ class SysTestMon():
             "port": "8093"
         },
         {
+            "component": "autofailover",
+            "logfiles": "info.log*",
+            "services": "all",
+            "keywords": ["due to operation being unsafe for service index"],
+            "ignore_keywords": None,
+            "check_stats_api": False,
+            "collect_dumps": False
+        },
+        {
             "component": "backup",
             "logfiles": "backup_service.log*",
             "services": "backup",
