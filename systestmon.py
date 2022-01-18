@@ -94,7 +94,10 @@ class SysTestMon():
             "component": "xdcr",
             "logfiles": "*xdcr*.log*",
             "services": "kv",
-            "keywords": ["Failed on calling", "panic", "fatal", "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\["],
+            "keywords": ["Failed on calling", "panic", "fatal", "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\[",
+                         "non-recoverable error from xmem client", "Execution timed out", "initConnection error",
+                         "Unable to generate req or resp", "error when making rest call or unmarshalling data",
+                         "unable to find last known target manifest version", "net/http: request canceled"],
             "ignore_keywords": None,
             "check_stats_api": False,
             "collect_dumps": False
