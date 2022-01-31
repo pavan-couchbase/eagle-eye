@@ -100,7 +100,8 @@ class SysTestMon():
                          "unable to find last known target manifest version", "net/http: request canceled"],
             "ignore_keywords": None,
             "check_stats_api": False,
-            "collect_dumps": False
+            "collect_dumps": False,
+            "outgoing_mutations_threshold": 1000000
         },
         {
             "component": "projector",
@@ -342,6 +343,21 @@ class SysTestMon():
                         if not message == '':
                             message_content = message_content + '\n\n' + node + " : " + str(component["component"])
                             message_content = message_content + '\n\n' + message + "\n"
+
+                # Check if XDCR outgoing mutations in the past hour > threshold
+                if component["component"] == "xdcr":
+                    threshold = component["outgoing_mutations_threshold"]
+                    src_buckets = self.get_xdcr_src_buckets(master_node)
+                    for src_bucket in src_buckets:
+                        bucket_stats = self.fetch_bucket_xdcr_stats(master_node, src_bucket)['op']['samples'][
+                                           'replication_changes_left'][-60:]
+                        if all(stat > threshold for stat in bucket_stats):
+                            self.logger.warn(
+                                "XDCR outgoing mutations in the past hour on {0}\n{1} > {2}".format(
+                                    src_bucket,
+                                    bucket_stats,
+                                    threshold))
+                            should_cbcollect = True
 
             # Check for health of all nodes
             for node in node_map:
@@ -854,6 +870,21 @@ class SysTestMon():
             message_content = message_content + '\n\n' + "Found an exception {0}".format(e) + "\n"
 
         return should_cbcollect, message_content
+
+    def get_xdcr_src_buckets(self, node):
+        src_buckets = []
+        api = "http://" + node + ":8091/pools/default/replications"
+        status, content, _ = self._http_request(api)
+        repls =  json.loads(content)
+        for repl in repls:
+            src_buckets.append(repl["source"])
+        return src_buckets
+
+    def fetch_bucket_xdcr_stats(self, node, bucket, zoom="day"):
+        api = "http://" + node + ":8091/pools/default/buckets/@xdcr-{0}/stats?zoom={1}".format(bucket, zoom)
+        status, content, _ = self._http_request(api)
+        return json.loads(content)
+
 
     def _create_headers(self):
         authorization = base64.encodestring('%s:%s' % ("Administrator", "password"))
