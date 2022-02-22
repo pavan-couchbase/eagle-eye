@@ -49,7 +49,7 @@ class SysTestMon():
             "services": "index",
             "keywords": ["panic", "fatal", "Error parsing XATTR", "zero", "protobuf.Error", "Encounter planner error",
                          "corruption", "processFlushAbort", "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\[",
-                         "Failed to initialize metadata provider", "Waiting for Node Alloc", "found missing page", "invalid last page",
+                         "Failed to initialize metadata provider", "found missing page", "invalid last page",
                          "Storage corrupted and unrecoverable", "ensureMonotonicTs  Align seqno smaller than lastFlushTs", 
                          "TS falls out of snapshot boundary"],
             "ignore_keywords": ["fatal remote"],
