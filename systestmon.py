@@ -348,20 +348,20 @@ class SysTestMon():
                             message_content = message_content + '\n\n' + node + " : " + str(component["component"])
                             message_content = message_content + '\n\n' + message + "\n"
 
-                # Check if XDCR outgoing mutations in the past hour > threshold
-                if component["component"] == "xdcr":
-                    threshold = component["outgoing_mutations_threshold"]
-                    src_buckets = self.get_xdcr_src_buckets(master_node)
-                    for src_bucket in src_buckets:
-                        bucket_stats = self.fetch_bucket_xdcr_stats(master_node, src_bucket)['op']['samples'][
-                                           'replication_changes_left'][-60:]
-                        if all(stat > threshold for stat in bucket_stats):
-                            self.logger.warn(
-                                "XDCR outgoing mutations in the past hour on {0}\n{1} > {2}".format(
-                                    src_bucket,
-                                    bucket_stats,
-                                    threshold))
-                            should_cbcollect = True
+                # # Check if XDCR outgoing mutations in the past hour > threshold
+                # if component["component"] == "xdcr":
+                #     threshold = component["outgoing_mutations_threshold"]
+                #     src_buckets = self.get_xdcr_src_buckets(master_node)
+                #     for src_bucket in src_buckets:
+                #         bucket_stats = self.fetch_bucket_xdcr_stats(master_node, src_bucket)['op']['samples'][
+                #                            'replication_changes_left'][-60:]
+                #         if all(stat > threshold for stat in bucket_stats):
+                #             self.logger.warn(
+                #                 "XDCR outgoing mutations in the past hour on {0}\n{1} > {2}".format(
+                #                     src_bucket,
+                #                     bucket_stats,
+                #                     threshold))
+                #             should_cbcollect = True
 
             # Check for health of all nodes
             for node in node_map:
