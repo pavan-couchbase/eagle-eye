@@ -474,7 +474,7 @@ class SysTestMon():
                             self.logger.error("Issue with cbcollect")
                             break
 
-            self.update_state_file()
+            # self.update_state_file()
 
             self.logger.info(
                 "====== Log scan iteration number {1} complete. Sleeping for {0} seconds ======".format(
