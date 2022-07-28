@@ -38,7 +38,7 @@ class SysTestMon():
             "component": "memcached",
             "logfiles": "memcached.log.*",
             "services": "all",
-            "keywords": ["CRITICAL", "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\[", "exception occurred in runloop", "Invalid packet header detected"],
+            "keywords": ["CRITICAL", "ERROR", "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\[", "exception occurred in runloop", "Invalid packet header detected"],
             "ignore_keywords": None,
             "check_stats_api": False,
             "collect_dumps": False
@@ -59,55 +59,55 @@ class SysTestMon():
             "port": "9102",
             "collect_dumps": True
         },
-        {
-            "component": "analytics",
-            "logfiles": "analytics_error*",
-            "services": "cbas",
-            "keywords": ["fata", "Analytics Service is temporarily unavailable", "Failed during startup task", "HYR0",
-                         "ASX", "IllegalStateException", "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\[", "panic", "ResourceLeakDetector.*LEAK"],
-            "ignore_keywords": ["HYR0010","HYR0115","ASX3110","HYR0114"],
-            "check_stats_api": False,
-            "collect_dumps": False
-        },
-        {
-            "component": "eventing",
-            "logfiles": "eventing.log*",
-            "services": "eventing",
-            "keywords": ["panic", "fatal", "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\["],
-            "ignore_keywords": None,
-            "check_stats_api": False,
-            "collect_dumps": False
-        },
-        {
-            "component": "fts",
-            "logfiles": "fts.log*",
-            "services": "fts",
-            "keywords": ["panic", "fatal", "authPassword", "\[ERRO\]", "Basic\s[a-zA-Z]\{10,\}",
-                         "Menelaus-Auth-User:\["],
-            "ignore_keywords": ["Fatal:false", "use of closed network connection",
-                                "Reschedule failed, failing request", "TLS handshake error", "cannot unmarshal object",
-                                "bleve.Index is not copyable"],
-            "check_stats_api": True,
-            "stats_api_list": ["api/stats"],
-            "port": "8094",
-            "collect_dumps": True
-        },
-        {
-            "component": "xdcr",
-            "logfiles": "*xdcr*.log*",
-            "services": "kv",
-            "keywords": ["Failed on calling", "panic", "fatal", "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\[",
-             "non-recoverable error from xmem client", "Unable to respond to caller",
-             "Unable to generate req or resp", "error when making rest call or unmarshalling data",
-             "unable to find last known target manifest version", "net/http: request canceled",
-             "has payloadCompressed but no payload after deserialization",
-             "Error converting VBTask to DCP Nozzle Task",
-	     "Xmem is stuck"],
-            "ignore_keywords": None,
-            "check_stats_api": False,
-            "collect_dumps": False,
-            "outgoing_mutations_threshold": 1000000
-        },
+        # {
+        #     "component": "analytics",
+        #     "logfiles": "analytics_error*",
+        #     "services": "cbas",
+        #     "keywords": ["fata", "Analytics Service is temporarily unavailable", "Failed during startup task", "HYR0",
+        #                  "ASX", "IllegalStateException", "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\[", "panic", "ResourceLeakDetector.*LEAK"],
+        #     "ignore_keywords": ["HYR0010","HYR0115","ASX3110","HYR0114"],
+        #     "check_stats_api": False,
+        #     "collect_dumps": False
+        # },
+        # {
+        #     "component": "eventing",
+        #     "logfiles": "eventing.log*",
+        #     "services": "eventing",
+        #     "keywords": ["panic", "fatal", "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\["],
+        #     "ignore_keywords": None,
+        #     "check_stats_api": False,
+        #     "collect_dumps": False
+        # },
+        # {
+        #     "component": "fts",
+        #     "logfiles": "fts.log*",
+        #     "services": "fts",
+        #     "keywords": ["panic", "fatal", "authPassword", "\[ERRO\]", "Basic\s[a-zA-Z]\{10,\}",
+        #                  "Menelaus-Auth-User:\["],
+        #     "ignore_keywords": ["Fatal:false", "use of closed network connection",
+        #                         "Reschedule failed, failing request", "TLS handshake error", "cannot unmarshal object",
+        #                         "bleve.Index is not copyable"],
+        #     "check_stats_api": True,
+        #     "stats_api_list": ["api/stats"],
+        #     "port": "8094",
+        #     "collect_dumps": True
+        # },
+        # {
+        #     "component": "xdcr",
+        #     "logfiles": "*xdcr*.log*",
+        #     "services": "kv",
+        #     "keywords": ["Failed on calling", "panic", "fatal", "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\[",
+        #      "non-recoverable error from xmem client", "Unable to respond to caller",
+        #      "Unable to generate req or resp", "error when making rest call or unmarshalling data",
+        #      "unable to find last known target manifest version", "net/http: request canceled",
+        #      "has payloadCompressed but no payload after deserialization",
+        #      "Error converting VBTask to DCP Nozzle Task",
+	    #  "Xmem is stuck"],
+        #     "ignore_keywords": None,
+        #     "check_stats_api": False,
+        #     "collect_dumps": False,
+        #     "outgoing_mutations_threshold": 1000000
+        # },
         {
             "component": "projector",
             "logfiles": "projector.log*",
@@ -139,40 +139,40 @@ class SysTestMon():
             "check_stats_api": False,
             "collect_dumps": False
         },
-        {
-            "component": "query",
-            "logfiles": "query.log*",
-            "services": "n1ql",
-            "keywords": ["panic", "fatal", "Encounter planner error", "Basic\s[a-zA-Z]\{10,\}",
-                         "Menelaus-Auth-User:\[", "invalid byte in chunk length"],
-            "ignore_keywords": ["not available"],
-            "check_stats_api": False,
-            "collect_dumps": True,
-            "port": "8093"
-        },
-        {
-            "component": "autofailover",
-            "logfiles": "info.log*",
-            "services": "all",
-            "keywords": ["due to operation being unsafe for service index"],
-            "ignore_keywords": None,
-            "check_stats_api": False,
-            "collect_dumps": False
-        },
-        {
-            "component": "backup",
-            "logfiles": "backup_service.log*",
-            "services": "backup",
-            "keywords": ["panic", "fatal", "warn", "Failed Task",
-                         "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\["],
-            "ignore_keywords": None,
-            "check_stats_api": False,
-            "collect_dumps": True,
-            "port": "8097"
-        }
+        # {
+        #     "component": "query",
+        #     "logfiles": "query.log*",
+        #     "services": "n1ql",
+        #     "keywords": ["panic", "fatal", "Encounter planner error", "Basic\s[a-zA-Z]\{10,\}",
+        #                  "Menelaus-Auth-User:\[", "invalid byte in chunk length"],
+        #     "ignore_keywords": ["not available"],
+        #     "check_stats_api": False,
+        #     "collect_dumps": True,
+        #     "port": "8093"
+        # },
+        # {
+        #     "component": "autofailover",
+        #     "logfiles": "info.log*",
+        #     "services": "all",
+        #     "keywords": ["due to operation being unsafe for service index"],
+        #     "ignore_keywords": None,
+        #     "check_stats_api": False,
+        #     "collect_dumps": False
+        # },
+        # {
+        #     "component": "backup",
+        #     "logfiles": "backup_service.log*",
+        #     "services": "backup",
+        #     "keywords": ["panic", "fatal", "warn", "Failed Task",
+        #                  "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\["],
+        #     "ignore_keywords": None,
+        #     "check_stats_api": False,
+        #     "collect_dumps": True,
+        #     "port": "8097"
+        # }
     ]
     # Frequency of scanning the logs in seconds
-    scan_interval = 3600
+    scan_interval = 1200
     # Level of memory usage after which alert should be raised
     mem_threshold = 90
     # Level of CPU usage after which alert should be raised
