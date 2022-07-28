@@ -39,7 +39,7 @@ class SysTestMon():
             "logfiles": "memcached.log.*",
             "services": "all",
             "keywords": ["CRITICAL", "ERROR", "Basic\s[a-zA-Z]\{10,\}", "Menelaus-Auth-User:\[", "exception occurred in runloop", "Invalid packet header detected"],
-            "ignore_keywords": None,
+            "ignore_keywords": ["XERROR"],
             "check_stats_api": False,
             "collect_dumps": False
         },
